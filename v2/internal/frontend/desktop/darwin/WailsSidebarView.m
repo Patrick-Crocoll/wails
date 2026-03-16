@@ -193,6 +193,7 @@
         [createdOutlineView setIndentationPerLevel:12.0];
         [createdOutlineView setGridStyleMask:NSTableViewGridNone];
         [createdOutlineView setIntercellSpacing:NSMakeSize(0.0, 0.0)];
+        [createdOutlineView setFloatsGroupRows:NO];
         [createdOutlineView setDataSource:self];
         [createdOutlineView setDelegate:self];
 
