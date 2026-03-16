@@ -12,6 +12,7 @@
 #import "WailsAlert.h"
 #import "WailsMenu.h"
 #import "WailsWebView.h"
+#import "WailsSidebarView.h"
 #import "WindowDelegate.h"
 #import "message.h"
 #import "Role.h"
@@ -292,10 +293,15 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [splitView setVertical:YES];
     [splitView setDividerStyle:NSSplitViewDividerStyleThin];
 
-    NSView *sidebarView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 220, contentViewBounds.size.height)];
-    [sidebarView setAutoresizingMask:NSViewHeightSizable];
-    [sidebarView setWantsLayer:YES];
-    [sidebarView.layer setBackgroundColor:[[NSColor windowBackgroundColor] CGColor]];
+    WailsSidebarView *sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
+
+    sidebar.onItemSelected = ^(NSString *itemLabel) {
+        NSLog(@"Selected item: %@", itemLabel);
+    };
+
+    sidebar.onGroupToggled = ^(NSString *groupLabel, BOOL expanded) {
+        NSLog(@"Group %@ %@", groupLabel, expanded ? @"expanded" : @"collapsed");
+    };
 
     NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
     [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
@@ -304,7 +310,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     [mainView addSubview:self.webview];
 
-    [splitView addSubview:sidebarView];
+    [splitView addSubview:sidebar];
     [splitView addSubview:mainView];
     [splitView adjustSubviews];
 

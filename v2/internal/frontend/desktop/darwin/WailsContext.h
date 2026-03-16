@@ -34,6 +34,7 @@
 
 @property (retain) WailsWindow* mainWindow;
 @property (retain) WailsWebView* webview;
+//@property (retain)
 @property (nonatomic, assign) id appdelegate;
 
 @property bool hideOnClose;
