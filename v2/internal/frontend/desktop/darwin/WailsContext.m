@@ -284,10 +284,31 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
 
     CGRect init = { 0,0,0,0 };
     [self.webview initWithFrame:init configuration:config];
-    [contentView addSubview:self.webview];
-    [self.webview setAutoresizingMask: NSViewWidthSizable|NSViewHeightSizable];
-    CGRect contentViewBounds = [contentView bounds];
-    [self.webview setFrame:contentViewBounds];
+    // TODO #PMC Experimental changes: adding native sidebar START
+    NSRect contentViewBounds = [contentView bounds];
+
+    NSSplitView *splitView = [[NSSplitView alloc] initWithFrame:contentViewBounds];
+    [splitView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [splitView setVertical:YES];
+    [splitView setDividerStyle:NSSplitViewDividerStyleThin];
+
+    NSView *sidebarView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, 220, contentViewBounds.size.height)];
+    [sidebarView setAutoresizingMask:NSViewHeightSizable];
+    [sidebarView setWantsLayer:YES];
+    [sidebarView.layer setBackgroundColor:[[NSColor windowBackgroundColor] CGColor]];
+
+    NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
+    [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+
+    [self.webview setFrame:[mainView bounds]];
+    [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [mainView addSubview:self.webview];
+
+    [splitView addSubview:sidebarView];
+    [splitView addSubview:mainView];
+    [splitView adjustSubviews];
+
+    [contentView addSubview:splitView];
 
     if (webviewIsTransparent) {
         [self.webview setValue:[NSNumber numberWithBool:!webviewIsTransparent] forKey:@"drawsBackground"];
@@ -295,6 +316,8 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
 
     [self.webview setNavigationDelegate:self];
     self.webview.UIDelegate = self;
+
+    // TODO #PMC Experimental changes: adding native sidebar END
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setBool:FALSE forKey:@"NSAutomaticQuoteSubstitutionEnabled"];
