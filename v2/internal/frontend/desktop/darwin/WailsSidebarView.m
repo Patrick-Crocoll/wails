@@ -41,12 +41,12 @@
 
 @implementation _WailsSidebarExampleModel
 
-- (NSInteger)numberOfGroupsInSidebarView:(WailsSidebarView *)sidebarView
+- (NSInteger)numberOfGroups
 {
     return 3;
 }
 
-- (NSString *)sidebarView:(WailsSidebarView *)sidebarView titleForGroupAtIndex:(NSInteger)groupIndex
+- (NSString *)titleForGroupAtIndex:(NSInteger)groupIndex
 {
     switch (groupIndex) {
         case 0: return @"Favorites";
@@ -56,7 +56,7 @@
     }
 }
 
-- (NSInteger)sidebarView:(WailsSidebarView *)sidebarView numberOfItemsInGroupAtIndex:(NSInteger)groupIndex
+- (NSInteger)numberOfItemsInGroupAtIndex:(NSInteger)groupIndex
 {
     switch (groupIndex) {
         case 0: return 3;
@@ -66,7 +66,7 @@
     }
 }
 
-- (NSString *)sidebarView:(WailsSidebarView *)sidebarView labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
+- (NSString *)labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
 {
     switch (groupIndex) {
         case 0:
@@ -93,7 +93,7 @@
     return @"";
 }
 
-- (NSImage *)sidebarView:(WailsSidebarView *)sidebarView iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
+- (NSImage *)iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
 {
     if (groupIndex == 0) {
         switch (itemIndex) {
@@ -121,7 +121,7 @@
     return [NSImage imageNamed:NSImageNameFolder];
 }
 
-- (BOOL)sidebarView:(WailsSidebarView *)sidebarView isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex
+- (BOOL)isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex
 {
     return YES;
 }
@@ -180,43 +180,43 @@
     [items addObject:item];
 }
 
-- (NSInteger)numberOfUngroupedItemsInSidebarView:(WailsSidebarView *)sidebarView {
+- (NSInteger)numberOfUngroupedItems {
     return [self.ungroupedItems count];
 }
 
-- (NSString *)sidebarView:(WailsSidebarView *)sidebarView labelForUngroupedItemAtIndex:(NSInteger)itemIndex {
+- (NSString *)labelForUngroupedItemAtIndex:(NSInteger)itemIndex {
     return [[self.ungroupedItems objectAtIndex:itemIndex] objectForKey:@"label"];
 }
 
-- (NSImage *)sidebarView:(WailsSidebarView *)sidebarView iconForUngroupedItemAtIndex:(NSInteger)itemIndex {
+- (NSImage *)iconForUngroupedItemAtIndex:(NSInteger)itemIndex {
     NSString *iconName = [[self.ungroupedItems objectAtIndex:itemIndex] objectForKey:@"icon"];
     return iconName ? [NSImage imageNamed:iconName] : nil;
 }
 
-- (NSInteger)numberOfGroupsInSidebarView:(WailsSidebarView *)sidebarView {
+- (NSInteger)numberOfGroups {
     return [self.groups count];
 }
 
-- (NSString *)sidebarView:(WailsSidebarView *)sidebarView titleForGroupAtIndex:(NSInteger)groupIndex {
+- (NSString *)titleForGroupAtIndex:(NSInteger)groupIndex {
     return [[self.groups objectAtIndex:groupIndex] objectForKey:@"title"];
 }
 
-- (NSInteger)sidebarView:(WailsSidebarView *)sidebarView numberOfItemsInGroupAtIndex:(NSInteger)groupIndex {
+- (NSInteger)numberOfItemsInGroupAtIndex:(NSInteger)groupIndex {
     return [[[self.groups objectAtIndex:groupIndex] objectForKey:@"items"] count];
 }
 
-- (NSString *)sidebarView:(WailsSidebarView *)sidebarView labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex {
+- (NSString *)labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex {
     NSArray *items = [[self.groups objectAtIndex:groupIndex] objectForKey:@"items"];
     return [[items objectAtIndex:itemIndex] objectForKey:@"label"];
 }
 
-- (NSImage *)sidebarView:(WailsSidebarView *)sidebarView iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex {
+- (NSImage *)iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex {
     NSArray *items = [[self.groups objectAtIndex:groupIndex] objectForKey:@"items"];
     NSString *iconName = [[items objectAtIndex:itemIndex] objectForKey:@"icon"];
     return iconName ? [NSImage imageNamed:iconName] : nil;
 }
 
-- (BOOL)sidebarView:(WailsSidebarView *)sidebarView isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex {
+- (BOOL)isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex {
     return [[[self.groups objectAtIndex:groupIndex] objectForKey:@"expanded"] boolValue];
 }
 
@@ -349,32 +349,32 @@
 
     // Compute ungroupedCount safely
     NSInteger ungroupedCount = 0;
-    if ([activeModel respondsToSelector:@selector(numberOfUngroupedItemsInSidebarView:)]) {
-        ungroupedCount = [activeModel numberOfUngroupedItemsInSidebarView:self];
+    if ([activeModel respondsToSelector:@selector(numberOfUngroupedItems)]) {
+        ungroupedCount = [activeModel numberOfUngroupedItems];
     }
 
     // New code to add ungrouped items as top-level nodes
     for (NSInteger i = 0; i < ungroupedCount; i++) {
         _WailsSidebarNode *node = [[_WailsSidebarNode alloc] init];
         node.isGroup = NO;
-        node.title = [activeModel sidebarView:self labelForUngroupedItemAtIndex:i];
-        node.icon = [activeModel sidebarView:self iconForUngroupedItemAtIndex:i];
+        node.title = [activeModel labelForUngroupedItemAtIndex:i];
+        node.icon = [activeModel iconForUngroupedItemAtIndex:i];
         [self.rootNodes addObject:node];
         [node release];
     }
 
-    NSInteger groupCount = [activeModel numberOfGroupsInSidebarView:self];
+    NSInteger groupCount = [activeModel numberOfGroups];
     for (NSInteger groupIndex = 0; groupIndex < groupCount; groupIndex++) {
         _WailsSidebarNode *groupNode = [[_WailsSidebarNode alloc] init];
         groupNode.isGroup = YES;
-        groupNode.title = [activeModel sidebarView:self titleForGroupAtIndex:groupIndex];
+        groupNode.title = [activeModel titleForGroupAtIndex:groupIndex];
 
-        NSInteger itemCount = [activeModel sidebarView:self numberOfItemsInGroupAtIndex:groupIndex];
+        NSInteger itemCount = [activeModel numberOfItemsInGroupAtIndex:groupIndex];
         for (NSInteger itemIndex = 0; itemIndex < itemCount; itemIndex++) {
             _WailsSidebarNode *itemNode = [[_WailsSidebarNode alloc] init];
             itemNode.isGroup = NO;
-            itemNode.title = [activeModel sidebarView:self labelForItemAtIndex:itemIndex inGroupAtIndex:groupIndex];
-            itemNode.icon = [activeModel sidebarView:self iconForItemAtIndex:itemIndex inGroupAtIndex:groupIndex];
+            itemNode.title = [activeModel labelForItemAtIndex:itemIndex inGroupAtIndex:groupIndex];
+            itemNode.icon = [activeModel iconForItemAtIndex:itemIndex inGroupAtIndex:groupIndex];
             [groupNode.children addObject:itemNode];
             [itemNode release];
         }
@@ -394,8 +394,8 @@
             continue;
         }
         BOOL shouldExpand = YES;
-        if ([activeModel respondsToSelector:@selector(sidebarView:isGroupInitiallyExpandedAtIndex:)]) {
-            shouldExpand = [activeModel sidebarView:self isGroupInitiallyExpandedAtIndex:currentGroupIndex];
+        if ([activeModel respondsToSelector:@selector(isGroupInitiallyExpandedAtIndex:)]) {
+            shouldExpand = [activeModel isGroupInitiallyExpandedAtIndex:currentGroupIndex];
         }
         if (shouldExpand) {
             [self.outlineView expandItem:rootNode];
