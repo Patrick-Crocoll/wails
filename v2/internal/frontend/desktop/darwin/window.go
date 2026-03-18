@@ -121,9 +121,11 @@ func NewWindow(frontendOptions *options.App, debug bool, devtools bool) *Window 
 
 		appearance = c.String(string(mac.Appearance))
 	}
-	var context *C.WailsContext = C.Create(title, width, height, frameless, resizable, zoomable, fullscreen, fullSizeContent,
+	var context *C.WailsContext = C.Create(
+		title, width, height, frameless, resizable, zoomable, fullscreen, fullSizeContent,
 		hideTitleBar, titlebarAppearsTransparent, hideTitle, useToolbar, hideToolbarSeparator, webviewIsTransparent,
-		alwaysOnTop, hideWindowOnClose, appearance, windowIsTranslucent, contentProtection, devtoolsEnabled, defaultContextMenuEnabled,
+		alwaysOnTop, hideWindowOnClose, appearance, windowIsTranslucent, contentProtection, devtoolsEnabled,
+		defaultContextMenuEnabled,
 		windowStartState, startsHidden, minWidth, minHeight, maxWidth, maxHeight, enableFraudulentWebsiteWarnings,
 		preferences, singleInstanceEnabled, singleInstanceUniqueId, enableDragAndDrop, disableWebViewDragAndDrop,
 	)
@@ -134,7 +136,10 @@ func NewWindow(frontendOptions *options.App, debug bool, devtools bool) *Window 
 	}
 
 	if frontendOptions.BackgroundColour != nil {
-		result.SetBackgroundColour(frontendOptions.BackgroundColour.R, frontendOptions.BackgroundColour.G, frontendOptions.BackgroundColour.B, frontendOptions.BackgroundColour.A)
+		result.SetBackgroundColour(
+			frontendOptions.BackgroundColour.R, frontendOptions.BackgroundColour.G, frontendOptions.BackgroundColour.B,
+			frontendOptions.BackgroundColour.A,
+		)
 	}
 
 	if frontendOptions.Mac != nil && frontendOptions.Mac.About != nil {
@@ -156,6 +161,10 @@ func NewWindow(frontendOptions *options.App, debug bool, devtools bool) *Window 
 	if debug && frontendOptions.Debug.OpenInspectorOnStartup {
 		showInspector(result.context)
 	}
+
+	// set the native elements
+	result.SetNativeElements(frontendOptions.Native)
+
 	return result
 }
 
@@ -308,6 +317,6 @@ func (w *Window) UpdateApplicationMenu() {
 	C.UpdateApplicationMenu(w.context)
 }
 
-func (w Window) Print() {
+func (w *Window) Print() {
 	C.WindowPrint(w.context)
 }

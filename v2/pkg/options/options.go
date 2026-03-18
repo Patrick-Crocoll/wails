@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/wailsapp/wails/v2/pkg/native"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
@@ -55,6 +56,7 @@ type App struct {
 	// AssetServer configures the Assets for the application
 	AssetServer        *assetserver.Options
 	Menu               *menu.Menu
+	Native             *native.Native
 	Logger             logger.Logger `json:"-"`
 	LogLevel           logger.LogLevel
 	LogLevelProduction logger.LogLevel
