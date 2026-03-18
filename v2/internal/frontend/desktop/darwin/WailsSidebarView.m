@@ -34,7 +34,7 @@
 }
 @end
 
-
+// FIXME: EXAMPLE START: DELETE THIS!!!
 
 @interface _WailsSidebarExampleModel : NSObject <WailsSidebarViewModel>
 @end
@@ -128,7 +128,99 @@
 
 @end
 
+// FIXME: EXAMPLE END
 
+// implementation for WailsSidebarModel. Used to bridge to go code
+@interface WailsSidebarModel ()
+@property (nonatomic, retain) NSMutableArray *ungroupedItems;
+@property (nonatomic, retain) NSMutableArray *groups;
+@end
+
+@implementation WailsSidebarModel
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        self.ungroupedItems = [[NSMutableArray alloc] init];
+        self.groups = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    [self.ungroupedItems release];
+    [self.groups release];
+    [super dealloc];
+}
+
+- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName {
+    NSMutableDictionary *item = [NSMutableDictionary dictionary];
+    if (label) [item setObject:label forKey:@"label"];
+    if (iconName) [item setObject:iconName forKey:@"icon"];
+    [self.ungroupedItems addObject:item];
+}
+
+- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded {
+    NSMutableArray *items = [[NSMutableArray alloc] init];
+    NSMutableDictionary *group = [NSMutableDictionary dictionary];
+    if (title) [group setObject:title forKey:@"title"];
+    [group setObject:@(expanded) forKey:@"expanded"];
+    [group setObject:items forKey:@"items"];
+    [self.groups addObject:group];
+    [items release];
+}
+
+- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName {
+    NSMutableDictionary *lastGroup = [self.groups lastObject];
+    if (!lastGroup) return;
+    NSMutableArray *items = [lastGroup objectForKey:@"items"];
+    NSMutableDictionary *item = [NSMutableDictionary dictionary];
+    if (label) [item setObject:label forKey:@"label"];
+    if (iconName) [item setObject:iconName forKey:@"icon"];
+    [items addObject:item];
+}
+
+- (NSInteger)numberOfUngroupedItemsInSidebarView:(WailsSidebarView *)sidebarView {
+    return [self.ungroupedItems count];
+}
+
+- (NSString *)sidebarView:(WailsSidebarView *)sidebarView labelForUngroupedItemAtIndex:(NSInteger)itemIndex {
+    return [[self.ungroupedItems objectAtIndex:itemIndex] objectForKey:@"label"];
+}
+
+- (NSImage *)sidebarView:(WailsSidebarView *)sidebarView iconForUngroupedItemAtIndex:(NSInteger)itemIndex {
+    NSString *iconName = [[self.ungroupedItems objectAtIndex:itemIndex] objectForKey:@"icon"];
+    return iconName ? [NSImage imageNamed:iconName] : nil;
+}
+
+- (NSInteger)numberOfGroupsInSidebarView:(WailsSidebarView *)sidebarView {
+    return [self.groups count];
+}
+
+- (NSString *)sidebarView:(WailsSidebarView *)sidebarView titleForGroupAtIndex:(NSInteger)groupIndex {
+    return [[self.groups objectAtIndex:groupIndex] objectForKey:@"title"];
+}
+
+- (NSInteger)sidebarView:(WailsSidebarView *)sidebarView numberOfItemsInGroupAtIndex:(NSInteger)groupIndex {
+    return [[[self.groups objectAtIndex:groupIndex] objectForKey:@"items"] count];
+}
+
+- (NSString *)sidebarView:(WailsSidebarView *)sidebarView labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex {
+    NSArray *items = [[self.groups objectAtIndex:groupIndex] objectForKey:@"items"];
+    return [[items objectAtIndex:itemIndex] objectForKey:@"label"];
+}
+
+- (NSImage *)sidebarView:(WailsSidebarView *)sidebarView iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex {
+    NSArray *items = [[self.groups objectAtIndex:groupIndex] objectForKey:@"items"];
+    NSString *iconName = [[items objectAtIndex:itemIndex] objectForKey:@"icon"];
+    return iconName ? [NSImage imageNamed:iconName] : nil;
+}
+
+- (BOOL)sidebarView:(WailsSidebarView *)sidebarView isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex {
+    return [[[self.groups objectAtIndex:groupIndex] objectForKey:@"expanded"] boolValue];
+}
+
+@end
 
 @interface WailsSidebarView ()
 @property (nonatomic, retain) NSScrollView *scrollView;
@@ -255,6 +347,22 @@
         return;
     }
 
+    // Compute ungroupedCount safely
+    NSInteger ungroupedCount = 0;
+    if ([activeModel respondsToSelector:@selector(numberOfUngroupedItemsInSidebarView:)]) {
+        ungroupedCount = [activeModel numberOfUngroupedItemsInSidebarView:self];
+    }
+
+    // New code to add ungrouped items as top-level nodes
+    for (NSInteger i = 0; i < ungroupedCount; i++) {
+        _WailsSidebarNode *node = [[_WailsSidebarNode alloc] init];
+        node.isGroup = NO;
+        node.title = [activeModel sidebarView:self labelForUngroupedItemAtIndex:i];
+        node.icon = [activeModel sidebarView:self iconForUngroupedItemAtIndex:i];
+        [self.rootNodes addObject:node];
+        [node release];
+    }
+
     NSInteger groupCount = [activeModel numberOfGroupsInSidebarView:self];
     for (NSInteger groupIndex = 0; groupIndex < groupCount; groupIndex++) {
         _WailsSidebarNode *groupNode = [[_WailsSidebarNode alloc] init];
@@ -277,19 +385,25 @@
 
     [self.outlineView reloadData];
 
-    for (_WailsSidebarNode *groupNode in self.rootNodes) {
-        NSInteger groupIndex = [self.rootNodes indexOfObject:groupNode];
+    // Expand groups (skip ungrouped since they are not groups)
+    NSInteger rootIndex = 0;
+    NSInteger currentGroupIndex = 0;
+    for (_WailsSidebarNode *rootNode in self.rootNodes) {
+        if (!rootNode.isGroup) {
+            rootIndex++;
+            continue;
+        }
         BOOL shouldExpand = YES;
-
         if ([activeModel respondsToSelector:@selector(sidebarView:isGroupInitiallyExpandedAtIndex:)]) {
-            shouldExpand = [activeModel sidebarView:self isGroupInitiallyExpandedAtIndex:groupIndex];
+            shouldExpand = [activeModel sidebarView:self isGroupInitiallyExpandedAtIndex:currentGroupIndex];
         }
-
         if (shouldExpand) {
-            [self.outlineView expandItem:groupNode];
+            [self.outlineView expandItem:rootNode];
         } else {
-            [self.outlineView collapseItem:groupNode];
+            [self.outlineView collapseItem:rootNode];
         }
+        rootIndex++;
+        currentGroupIndex++;
     }
 }
 

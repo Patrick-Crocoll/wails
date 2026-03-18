@@ -293,13 +293,13 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [splitView setVertical:YES];
     [splitView setDividerStyle:NSSplitViewDividerStyleThin];
 
-    WailsSidebarView *sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
+    self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
 
-    sidebar.onItemSelected = ^(NSString *itemLabel) {
+    self.sidebar.onItemSelected = ^(NSString *itemLabel) {
         NSLog(@"Selected item: %@", itemLabel);
     };
 
-    sidebar.onGroupToggled = ^(NSString *groupLabel, BOOL expanded) {
+    self.sidebar.onGroupToggled = ^(NSString *groupLabel, BOOL expanded) {
         NSLog(@"Group %@ %@", groupLabel, expanded ? @"expanded" : @"collapsed");
     };
 
@@ -310,7 +310,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
     [mainView addSubview:self.webview];
 
-    [splitView addSubview:sidebar];
+    [splitView addSubview:self.sidebar];
     [splitView addSubview:mainView];
     [splitView adjustSubviews];
 

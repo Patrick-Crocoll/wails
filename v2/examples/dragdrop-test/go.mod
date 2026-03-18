@@ -34,4 +34,4 @@ require (
 	golang.org/x/text v0.22.0 // indirect
 )
 
-replace github.com/wailsapp/wails/v2 => E:/releases/wails/v2
+//replace github.com/wailsapp/wails/v2 => E:/releases/wails/v2

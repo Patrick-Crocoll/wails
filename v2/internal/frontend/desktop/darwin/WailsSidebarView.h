@@ -18,6 +18,9 @@ typedef void (^WailsSidebarGroupToggledHandler)(NSString *groupLabel, BOOL expan
 
 @optional
 - (BOOL)sidebarView:(WailsSidebarView *)sidebarView isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex;
+- (NSInteger)numberOfUngroupedItemsInSidebarView:(WailsSidebarView *)sidebarView;
+- (NSString *)sidebarView:(WailsSidebarView *)sidebarView labelForUngroupedItemAtIndex:(NSInteger)itemIndex;
+- (NSImage *)sidebarView:(WailsSidebarView *)sidebarView iconForUngroupedItemAtIndex:(NSInteger)itemIndex;
 @end
 
 @interface WailsSidebarView : NSView <NSOutlineViewDataSource, NSOutlineViewDelegate>
@@ -28,6 +31,15 @@ typedef void (^WailsSidebarGroupToggledHandler)(NSString *groupLabel, BOOL expan
 
 - (instancetype)initWithFrame:(NSRect)frameRect model:(id<WailsSidebarViewModel>)model;
 - (void)reloadData;
+
+@end
+
+// A concrete implementation of WailsSidebarViewModel, used to bridge the objective-c code to the go code
+@interface WailsSidebarModel : NSObject <WailsSidebarViewModel>
+
+- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName;
+- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded;
+- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName; // Adds to last group
 
 @end
 

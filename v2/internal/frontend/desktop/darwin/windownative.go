@@ -10,8 +10,10 @@ func (w *Window) SetNativeElements(ne *native.Native) {
 	}
 	// (1) the native sidebar
 	if ne.SidebarProvider != nil {
-
-		return
+		provider := *ne.SidebarProvider
+		model := CreateSidebarModel(provider())
+		SetContextSidebarModel(w.context, model)
+		// No need to release model here; ObjC retains it
 	}
 	// FIXME: Code for native support goes here
 }

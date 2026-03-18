@@ -11,6 +11,7 @@
 #import <Cocoa/Cocoa.h>
 #import <WebKit/WebKit.h>
 #import "WailsWebView.h"
+#import "WailsSidebarView.h"
 
 #if __has_include(<UniformTypeIdentifiers/UTType.h>)
 #define USE_NEW_FILTERS
@@ -59,6 +60,7 @@
 @property (retain) NSImage* aboutImage;
 @property (retain) NSString* aboutTitle;
 @property (retain) NSString* aboutDescription;
+@property (retain) WailsSidebarView* sidebar;
 
 struct Preferences {
   bool *tabFocusesLinks;
