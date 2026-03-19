@@ -24,7 +24,7 @@ typedef void (^WailsSidebarGroupToggledHandler)(NSString *groupLabel, BOOL expan
 @end
 
 // declaration of the sidebar view
-@interface WailsSidebarView : NSView <NSOutlineViewDataSource, NSOutlineViewDelegate>
+@interface WailsSidebarView : NSView <NSOutlineViewDelegate>
 
 @property (nonatomic, assign) id<WailsSidebarViewModel> model;
 @property (nonatomic, copy) WailsSidebarSelectionChangedHandler onItemSelected;

@@ -1,13 +1,17 @@
 #import "WailsSidebarView.h"
 
-@interface _WailsSidebarNode : NSObject
+// private class WailsSidebarNode: can be a group OR an item
+@interface WailsSidebarNode : NSObject
+
 @property (nonatomic, assign) BOOL isGroup;
 @property (nonatomic, retain) NSString *title;
 @property (nonatomic, retain) NSImage *icon;
 @property (nonatomic, retain) NSMutableArray *children;
+
 @end
 
-@implementation _WailsSidebarNode
+@implementation WailsSidebarNode
+
 @synthesize isGroup;
 @synthesize title;
 @synthesize icon;
@@ -32,108 +36,15 @@
     [children release];
     [super dealloc];
 }
-@end
-
-// FIXME: EXAMPLE START: DELETE THIS!!!
-
-@interface _WailsSidebarExampleModel : NSObject <WailsSidebarViewModel>
-@end
-
-@implementation _WailsSidebarExampleModel
-
-- (NSInteger)numberOfGroups
-{
-    return 3;
-}
-
-- (NSString *)titleForGroupAtIndex:(NSInteger)groupIndex
-{
-    switch (groupIndex) {
-        case 0: return @"Favorites";
-        case 1: return @"Locations";
-        case 2: return @"Tags";
-        default: return @"";
-    }
-}
-
-- (NSInteger)numberOfItemsInGroupAtIndex:(NSInteger)groupIndex
-{
-    switch (groupIndex) {
-        case 0: return 3;
-        case 1: return 2;
-        case 2: return 3;
-        default: return 0;
-    }
-}
-
-- (NSString *)labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
-{
-    switch (groupIndex) {
-        case 0:
-            switch (itemIndex) {
-                case 0: return @"Recents";
-                case 1: return @"Desktop";
-                case 2: return @"Downloads";
-            }
-            break;
-        case 1:
-            switch (itemIndex) {
-                case 0: return @"Applications";
-                case 1: return @"Documents";
-            }
-            break;
-        case 2:
-            switch (itemIndex) {
-                case 0: return @"Red";
-                case 1: return @"Green";
-                case 2: return @"Blue";
-            }
-            break;
-    }
-    return @"";
-}
-
-- (NSImage *)iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
-{
-    if (groupIndex == 0) {
-        switch (itemIndex) {
-            case 0: return [NSImage imageNamed:NSImageNameMultipleDocuments];
-            case 1: return [NSImage imageNamed:NSImageNameHomeTemplate];
-            case 2: return [NSImage imageNamed:NSImageNameFolder];
-        }
-    }
-
-    if (groupIndex == 1) {
-        switch (itemIndex) {
-            case 0: return [NSImage imageNamed:NSImageNameApplicationIcon];
-            case 1: return [NSImage imageNamed:NSImageNameFolder];
-        }
-    }
-
-    if (groupIndex == 2) {
-        switch (itemIndex) {
-            case 0: return [NSImage imageNamed:NSImageNameStatusUnavailable];
-            case 1: return [NSImage imageNamed:NSImageNameStatusAvailable];
-            case 2: return [NSImage imageNamed:NSImageNameStatusPartiallyAvailable];
-        }
-    }
-
-    return [NSImage imageNamed:NSImageNameFolder];
-}
-
-- (BOOL)isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex
-{
-    return YES;
-}
 
 @end
-
-// FIXME: EXAMPLE END
 
 // implementation for WailsSidebarModel. Used to bridge to go code
 @interface WailsSidebarModel ()
+
 @property (nonatomic, retain) NSMutableArray *ungroupedItems;
 @property (nonatomic, retain) NSMutableArray *groups;
+
 @end
 
 @implementation WailsSidebarModel
@@ -222,22 +133,164 @@
 
 @end
 
+// WailsSidebarDataSource is a basic implementation of NSOutlineViewDataSource,
+// using WailsSidebarViewModel as the source and creating WailsSidebarNode objects.
+@interface WailsSidebarDataSource : NSObject <NSOutlineViewDataSource>
+
+@property (nonatomic, assign) id<WailsSidebarViewModel> model;
+@property (nonatomic, retain) NSMutableArray *rootNodes;
+
+- (void)reloadData;
+- (NSInteger)groupIndexForRootNode:(WailsSidebarNode *)rootNode;
+
+@end
+
+@implementation WailsSidebarDataSource
+
+@synthesize model;
+@synthesize rootNodes;
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self->model = nil;
+        self->rootNodes = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [rootNodes release];
+    [super dealloc];
+}
+
+- (WailsSidebarNode *)buildNodeWithTitle:(NSString *)title icon:(NSImage *)icon isGroup:(BOOL)isGroup
+{
+    WailsSidebarNode *node = [[WailsSidebarNode alloc] init];
+    node.isGroup = isGroup;
+    node.title = title;
+    node.icon = icon;
+    return node;
+}
+
+- (void)appendNodeToParent:(NSMutableArray *)parent node:(WailsSidebarNode *)node
+{
+    [parent addObject:node];
+    [node release];
+}
+
+// We use a custom setter for the model because we want to call reloadData when the model changes.
+- (void)setModel:(id<WailsSidebarViewModel>)newModel
+{
+    if (model != newModel) {
+        model = newModel;
+        [self reloadData];
+    }
+}
+
+- (void)reloadData
+{
+    [self.rootNodes removeAllObjects];
+
+    id<WailsSidebarViewModel> activeModel = self.model;
+    if (activeModel == nil) {
+        return;
+    }
+
+    NSInteger ungroupedCount = 0;
+    if ([activeModel respondsToSelector:@selector(numberOfUngroupedItems)]) {
+        ungroupedCount = [activeModel numberOfUngroupedItems];
+    }
+
+    for (NSInteger i = 0; i < ungroupedCount; i++) {
+        WailsSidebarNode *node = [self
+                                  buildNodeWithTitle:[activeModel labelForUngroupedItemAtIndex:i]
+                                                icon:[activeModel iconForUngroupedItemAtIndex:i]
+                                             isGroup:NO];
+        [self appendNodeToParent:self.rootNodes node:node];
+    }
+
+    NSInteger groupCount = [activeModel numberOfGroups];
+    for (NSInteger groupIndex = 0; groupIndex < groupCount; groupIndex++) {
+        WailsSidebarNode *groupNode = [self
+                                       buildNodeWithTitle:[activeModel titleForGroupAtIndex:groupIndex]
+                                                     icon:nil
+                                                  isGroup:YES];
+        NSInteger itemCount = [activeModel numberOfItemsInGroupAtIndex:groupIndex];
+        for (NSInteger itemIndex = 0; itemIndex < itemCount; itemIndex++) {
+            WailsSidebarNode *itemNode = [self
+                                          buildNodeWithTitle:[activeModel labelForItemAtIndex:itemIndex inGroupAtIndex:groupIndex]
+                                                        icon:[activeModel iconForItemAtIndex:itemIndex inGroupAtIndex:groupIndex]
+                                                     isGroup:NO];
+            [self appendNodeToParent:groupNode.children node:itemNode];
+        }
+
+        [self appendNodeToParent:self.rootNodes node:groupNode];
+    }
+}
+
+- (NSInteger)groupIndexForRootNode:(WailsSidebarNode *)rootNode
+{
+    NSInteger currentGroupIndex = 0;
+    for (WailsSidebarNode *node in self.rootNodes) {
+        if (!node.isGroup) {
+            continue;
+        }
+        if (node == rootNode) {
+            return currentGroupIndex;
+        }
+        currentGroupIndex++;
+    }
+    return NSNotFound;
+}
+
+- (NSInteger)outlineView:(NSOutlineView *)outlineView numberOfChildrenOfItem:(id)item
+{
+    if (item == nil) {
+        return [self.rootNodes count];
+    }
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
+    return [node.children count];
+}
+
+- (id)outlineView:(NSOutlineView *)outlineView child:(NSInteger)index ofItem:(id)item
+{
+    if (item == nil) {
+        return [self.rootNodes objectAtIndex:index];
+    }
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
+    return [node.children objectAtIndex:index];
+}
+
+- (BOOL)outlineView:(NSOutlineView *)outlineView isItemExpandable:(id)item
+{
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
+    return node.isGroup && [node.children count] > 0;
+}
+
+@end
+
+// the private properties of WailsSidebarView
 @interface WailsSidebarView ()
+
 @property (nonatomic, retain) NSScrollView *scrollView;
 @property (nonatomic, retain) NSOutlineView *outlineView;
-@property (nonatomic, retain) NSMutableArray *rootNodes;
-@property (nonatomic, retain) id<WailsSidebarViewModel> fallbackModel;
+@property (nonatomic, retain) WailsSidebarDataSource *dataSource;
+
 @end
 
 @implementation WailsSidebarView
 
-@synthesize model;
+// public properties
+@synthesize model; // FIXME: Why keep this ???
 @synthesize onItemSelected;
 @synthesize onGroupToggled;
+// private properties
 @synthesize scrollView;
 @synthesize outlineView;
-@synthesize rootNodes;
-@synthesize fallbackModel;
+@synthesize dataSource;
 
 - (instancetype)initWithFrame:(NSRect)frameRect
 {
@@ -248,20 +301,10 @@
 {
     self = [super initWithFrame:frameRect];
     if (self) {
-        self->model = nil;
+        self.model = sidebarModel;
         self->onItemSelected = nil;
         self->onGroupToggled = nil;
-        self->scrollView = nil;
-        self->outlineView = nil;
-        self->rootNodes = [[NSMutableArray alloc] init];
-        self->fallbackModel = nil;
-
-        if (sidebarModel != nil) {
-            self.model = sidebarModel;
-        } else {
-            self.fallbackModel = [[_WailsSidebarExampleModel alloc] init];
-            self.model = self.fallbackModel;
-        }
+        self->dataSource = [[WailsSidebarDataSource alloc] init];
 
         [self setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
         [self setWantsLayer:YES];
@@ -286,7 +329,7 @@
         [createdOutlineView setGridStyleMask:NSTableViewGridNone];
         [createdOutlineView setIntercellSpacing:NSMakeSize(0.0, 0.0)];
         [createdOutlineView setFloatsGroupRows:NO];
-        [createdOutlineView setDataSource:self];
+        [createdOutlineView setDataSource:self.dataSource];
         [createdOutlineView setDelegate:self];
 
         NSTableColumn *column = [[[NSTableColumn alloc] initWithIdentifier:@"SidebarColumn"] autorelease];
@@ -311,14 +354,14 @@
     [onGroupToggled release];
     [scrollView release];
     [outlineView release];
-    [rootNodes release];
-    [fallbackModel release];
+    [dataSource release];
     [super dealloc];
 }
 
 - (void)setModel:(id<WailsSidebarViewModel>)newModel
 {
     model = newModel;
+    self.dataSource.model = newModel;
     [self reloadData];
 }
 
@@ -340,118 +383,51 @@
 
 - (void)reloadData
 {
-    [self.rootNodes removeAllObjects];
+    [self.outlineView reloadData];
 
     id<WailsSidebarViewModel> activeModel = self.model;
     if (activeModel == nil) {
         return;
     }
 
-    // Compute ungroupedCount safely
-    NSInteger ungroupedCount = 0;
-    if ([activeModel respondsToSelector:@selector(numberOfUngroupedItems)]) {
-        ungroupedCount = [activeModel numberOfUngroupedItems];
-    }
-
-    // New code to add ungrouped items as top-level nodes
-    for (NSInteger i = 0; i < ungroupedCount; i++) {
-        _WailsSidebarNode *node = [[_WailsSidebarNode alloc] init];
-        node.isGroup = NO;
-        node.title = [activeModel labelForUngroupedItemAtIndex:i];
-        node.icon = [activeModel iconForUngroupedItemAtIndex:i];
-        [self.rootNodes addObject:node];
-        [node release];
-    }
-
-    NSInteger groupCount = [activeModel numberOfGroups];
-    for (NSInteger groupIndex = 0; groupIndex < groupCount; groupIndex++) {
-        _WailsSidebarNode *groupNode = [[_WailsSidebarNode alloc] init];
-        groupNode.isGroup = YES;
-        groupNode.title = [activeModel titleForGroupAtIndex:groupIndex];
-
-        NSInteger itemCount = [activeModel numberOfItemsInGroupAtIndex:groupIndex];
-        for (NSInteger itemIndex = 0; itemIndex < itemCount; itemIndex++) {
-            _WailsSidebarNode *itemNode = [[_WailsSidebarNode alloc] init];
-            itemNode.isGroup = NO;
-            itemNode.title = [activeModel labelForItemAtIndex:itemIndex inGroupAtIndex:groupIndex];
-            itemNode.icon = [activeModel iconForItemAtIndex:itemIndex inGroupAtIndex:groupIndex];
-            [groupNode.children addObject:itemNode];
-            [itemNode release];
-        }
-
-        [self.rootNodes addObject:groupNode];
-        [groupNode release];
-    }
-
-    [self.outlineView reloadData];
-
-    // Expand groups (skip ungrouped since they are not groups)
-    NSInteger rootIndex = 0;
     NSInteger currentGroupIndex = 0;
-    for (_WailsSidebarNode *rootNode in self.rootNodes) {
+    for (WailsSidebarNode *rootNode in self.dataSource.rootNodes) {
         if (!rootNode.isGroup) {
-            rootIndex++;
             continue;
         }
+
         BOOL shouldExpand = YES;
         if ([activeModel respondsToSelector:@selector(isGroupInitiallyExpandedAtIndex:)]) {
             shouldExpand = [activeModel isGroupInitiallyExpandedAtIndex:currentGroupIndex];
         }
+
         if (shouldExpand) {
             [self.outlineView expandItem:rootNode];
         } else {
             [self.outlineView collapseItem:rootNode];
         }
-        rootIndex++;
+
         currentGroupIndex++;
     }
-}
-
-#pragma mark - NSOutlineViewDataSource
-
-- (NSInteger)outlineView:(NSOutlineView *)outlineView numberOfChildrenOfItem:(id)item
-{
-    if (item == nil) {
-        return [self.rootNodes count];
-    }
-
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
-    return [node.children count];
-}
-
-- (id)outlineView:(NSOutlineView *)outlineView child:(NSInteger)index ofItem:(id)item
-{
-    if (item == nil) {
-        return [self.rootNodes objectAtIndex:index];
-    }
-
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
-    return [node.children objectAtIndex:index];
-}
-
-- (BOOL)outlineView:(NSOutlineView *)outlineView isItemExpandable:(id)item
-{
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
-    return node.isGroup && [node.children count] > 0;
 }
 
 #pragma mark - NSOutlineViewDelegate
 
 - (BOOL)outlineView:(NSOutlineView *)outlineView isGroupItem:(id)item
 {
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
     return node.isGroup;
 }
 
 - (BOOL)outlineView:(NSOutlineView *)outlineView shouldSelectItem:(id)item
 {
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
     return !node.isGroup;
 }
 
 - (NSView *)outlineView:(NSOutlineView *)sidebarOutlineView viewForTableColumn:(NSTableColumn *)tableColumn item:(id)item
 {
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
 
     if (node.isGroup) {
         NSTableCellView *groupCell = [[[NSTableCellView alloc] initWithFrame:NSMakeRect(0, 0, tableColumn.width, 20)] autorelease];
@@ -497,7 +473,7 @@
 
 - (CGFloat)outlineView:(NSOutlineView *)outlineView heightOfRowByItem:(id)item
 {
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
     return node.isGroup ? 20.0 : 28.0;
 }
 
@@ -513,7 +489,7 @@
         return;
     }
 
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
     if (node.isGroup) {
         return;
     }
@@ -530,7 +506,7 @@
         return;
     }
 
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
     if (!node.isGroup) {
         return;
     }
@@ -547,7 +523,7 @@
         return;
     }
 
-    _WailsSidebarNode *node = (_WailsSidebarNode *)item;
+    WailsSidebarNode *node = (WailsSidebarNode *)item;
     if (!node.isGroup) {
         return;
     }
