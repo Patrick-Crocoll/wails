@@ -166,6 +166,42 @@
     [super dealloc];
 }
 
+- (NSArray<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded
+{
+    NSMutableArray<WailsSidebarNode *> *nodes = [NSMutableArray array];
+
+    if (self.model == nil || [self.rootNodes count] == 0) {
+        return nodes;
+    }
+
+    NSInteger currentGroupIndex = 0;
+    for (WailsSidebarNode *rootNode in self.rootNodes) {
+        if (!rootNode.isGroup) {
+            // only groups can be expanded/collapsed
+            continue;
+        }
+        BOOL isInitiallyExpanded = YES;
+        if ([self.model respondsToSelector:@selector(isGroupInitiallyExpandedAtIndex:)]) {
+            isInitiallyExpanded = [self.model isGroupInitiallyExpandedAtIndex:currentGroupIndex];
+        }
+        if (isInitiallyExpanded == shouldBeExpanded) {
+            [nodes addObject:rootNode];
+        }
+        currentGroupIndex++;
+    }
+    return nodes;
+}
+
+- (NSArray<WailsSidebarNode *> *)expandedNodes
+{
+    return [self nodesMatchingExpansionState:YES];
+}
+
+- (NSArray<WailsSidebarNode *> *)collapsedNodes
+{
+    return [self nodesMatchingExpansionState:NO];
+}
+
 - (WailsSidebarNode *)buildNodeWithTitle:(NSString *)title icon:(NSImage *)icon isGroup:(BOOL)isGroup
 {
     WailsSidebarNode *node = [[WailsSidebarNode alloc] init];
@@ -384,6 +420,8 @@
 - (void)reloadData
 {
     [self.outlineView reloadData];
+
+    // FIXME: This is actually wrong: Expand/Collapse should be done once, when the View is created.
 
     id<WailsSidebarViewModel> activeModel = self.model;
     if (activeModel == nil) {
