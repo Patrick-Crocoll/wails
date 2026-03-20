@@ -178,11 +178,7 @@
             // only groups can be expanded/collapsed
             continue;
         }
-        BOOL isInitiallyExpanded = YES;
-        if ([self.model respondsToSelector:@selector(isGroupInitiallyExpandedAtIndex:)]) {
-            isInitiallyExpanded = [self.model isGroupInitiallyExpandedAtIndex:currentGroupIndex];
-        }
-        if (isInitiallyExpanded == shouldBeExpanded) {
+        if ([self.model isGroupInitiallyExpandedAtIndex:currentGroupIndex] == shouldBeExpanded) {
             [nodes addObject:rootNode];
         }
         currentGroupIndex++;
@@ -233,10 +229,7 @@
         return;
     }
 
-    NSInteger ungroupedCount = 0;
-    if ([activeModel respondsToSelector:@selector(numberOfUngroupedItems)]) {
-        ungroupedCount = [activeModel numberOfUngroupedItems];
-    }
+    NSInteger ungroupedCount = [activeModel numberOfUngroupedItems];
 
     for (NSInteger i = 0; i < ungroupedCount; i++) {
         WailsSidebarNode *node = [self

@@ -15,8 +15,6 @@ typedef void (^WailsSidebarGroupToggledHandler)(NSString *groupLabel, BOOL expan
 - (NSInteger)numberOfItemsInGroupAtIndex:(NSInteger)groupIndex;
 - (NSString *)labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex;
 - (NSImage *)iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex;
-
-@optional
 - (BOOL)isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex;
 - (NSInteger)numberOfUngroupedItems;
 - (NSString *)labelForUngroupedItemAtIndex:(NSInteger)itemIndex;
