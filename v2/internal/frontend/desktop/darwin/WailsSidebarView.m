@@ -169,11 +169,9 @@
 - (NSArray<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded
 {
     NSMutableArray<WailsSidebarNode *> *nodes = [NSMutableArray array];
-
     if (self.model == nil || [self.rootNodes count] == 0) {
         return nodes;
     }
-
     NSInteger currentGroupIndex = 0;
     for (WailsSidebarNode *rootNode in self.rootNodes) {
         if (!rootNode.isGroup) {
@@ -320,7 +318,6 @@
 @implementation WailsSidebarView
 
 // public properties
-@synthesize model; // FIXME: Why keep this ???
 @synthesize onItemSelected;
 @synthesize onGroupToggled;
 // private properties
@@ -337,7 +334,6 @@
 {
     self = [super initWithFrame:frameRect];
     if (self) {
-        self.model = sidebarModel;
         self->onItemSelected = nil;
         self->onGroupToggled = nil;
         self->dataSource = [[WailsSidebarDataSource alloc] init];
@@ -396,9 +392,8 @@
 
 - (void)setModel:(id<WailsSidebarViewModel>)newModel
 {
-    model = newModel;
     self.dataSource.model = newModel;
-    [self reloadData];
+    [self.outlineView reloadData];
 }
 
 - (void)setOnItemSelected:(WailsSidebarSelectionChangedHandler)newHandler
@@ -420,32 +415,16 @@
 - (void)reloadData
 {
     [self.outlineView reloadData];
+    [self expandNodes];
+}
 
-    // FIXME: This is actually wrong: Expand/Collapse should be done once, when the View is created.
-
-    id<WailsSidebarViewModel> activeModel = self.model;
-    if (activeModel == nil) {
-        return;
+- (void)expandNodes
+{
+    for (WailsSidebarNode *rootNode in self.dataSource.expandedNodes) {
+        [self.outlineView expandItem:rootNode];
     }
-
-    NSInteger currentGroupIndex = 0;
-    for (WailsSidebarNode *rootNode in self.dataSource.rootNodes) {
-        if (!rootNode.isGroup) {
-            continue;
-        }
-
-        BOOL shouldExpand = YES;
-        if ([activeModel respondsToSelector:@selector(isGroupInitiallyExpandedAtIndex:)]) {
-            shouldExpand = [activeModel isGroupInitiallyExpandedAtIndex:currentGroupIndex];
-        }
-
-        if (shouldExpand) {
-            [self.outlineView expandItem:rootNode];
-        } else {
-            [self.outlineView collapseItem:rootNode];
-        }
-
-        currentGroupIndex++;
+    for (WailsSidebarNode *rootNode in self.dataSource.collapsedNodes) {
+        [self.outlineView collapseItem:rootNode];
     }
 }
 
