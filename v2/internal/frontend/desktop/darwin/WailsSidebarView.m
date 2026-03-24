@@ -1,30 +1,16 @@
 #import "WailsSidebarView.h"
 
-// private class WailsSidebarNode: can be a group OR an item
-@interface WailsSidebarNode : NSObject
-
-@property (nonatomic, assign) BOOL isGroup;
-@property (nonatomic, retain) NSString *title;
-@property (nonatomic, retain) NSImage *icon;
-@property (nonatomic, retain) NSMutableArray *children;
-
-@end
+// FIXME: Check formatting in other objective-c files and make sure this is consistent
 
 @implementation WailsSidebarNode
 
-@synthesize isGroup;
 @synthesize title;
-@synthesize icon;
-@synthesize children;
 
 - (instancetype)init
 {
     self = [super init];
     if (self) {
-        self->isGroup = NO;
         self->title = nil;
-        self->icon = nil;
-        self->children = [[NSMutableArray alloc] init];
     }
     return self;
 }
@@ -32,8 +18,50 @@
 - (void)dealloc
 {
     [title release];
-    [icon release];
+    [super dealloc];
+}
+
+@end
+
+@implementation WailsSidebarGroupNode
+
+@synthesize isExpanded;
+@synthesize children;
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self->isExpanded = YES;
+        self->children = [[NSMutableArray alloc] init];
+    }
+    return self;
+}
+
+- (void)dealloc
+{
     [children release];
+    [super dealloc];
+}
+
+@end
+
+@implementation WailsSidebarItemNode
+
+@synthesize icon;
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        self->icon = nil;
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [icon release];
     [super dealloc];
 }
 
@@ -64,197 +92,115 @@
     [super dealloc];
 }
 
-- (NSImage *)systemSymbolImageNamed:(NSString *)symbolName
-{
+- (NSInteger)numberOfGroups {
+    return [self.groups count];
+}
+
+- (WailsSidebarGroupNode *)groupAt:(NSInteger)groupIndex {
+    if (groupIndex < 0 || groupIndex >= [self.groups count]) {
+        return nil;
+    }
+    id node = [self.groups objectAtIndex:groupIndex];
+    if (![node isKindOfClass:[WailsSidebarGroupNode class]]) {
+        return nil;
+    }
+    return (WailsSidebarGroupNode *)node;
+}
+
+- (NSInteger)numberOfUngroupedItems {
+    return [self.ungroupedItems count];
+}
+
+- (WailsSidebarItemNode *)ungroupedItemAt:(NSInteger)nodeIndex {
+    if (nodeIndex < 0 || nodeIndex >= [self.ungroupedItems count]) {
+        return nil;
+    }
+    id node = [self.ungroupedItems objectAtIndex:nodeIndex];
+    if (![node isKindOfClass:[WailsSidebarItemNode class]]) {
+        return nil;
+    }
+    return (WailsSidebarItemNode *)node;
+}
+
+#pragma mark - WailsSidebarDefaultModel
+
+- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName {
+    WailsSidebarItemNode *node = [self createNodeWithTitle:label iconName:iconName];
+    [self.ungroupedItems addObject:node];
+    [node release];
+}
+
+- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded {
+    WailsSidebarGroupNode *groupNode = [self createGroupWithTitle:title];
+    groupNode.isExpanded = expanded;
+    [self.groups addObject:groupNode];
+    [groupNode release];
+}
+
+- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName {
+    WailsSidebarGroupNode *lastGroup = [self.groups lastObject];
+    if (lastGroup == nil) {
+        return;
+    }
+    WailsSidebarItemNode *itemNode = [self createNodeWithTitle:label iconName:iconName];
+    [lastGroup.children addObject:itemNode];
+    [itemNode release];
+}
+
+#pragma mark - internal helpers
+
+- (WailsSidebarGroupNode *)createGroupWithTitle:(NSString *)title {
+    WailsSidebarGroupNode *node = [[WailsSidebarGroupNode alloc] init];
+    node.title = title;
+    return node;
+}
+
+- (WailsSidebarItemNode *)createNodeWithTitle:(NSString *)title iconName:(NSString *)iconName {
+    WailsSidebarItemNode *node = [[WailsSidebarItemNode alloc] init];
+    node.title = title;
+    node.icon = [self imageForIconName:iconName];
+    if (node.icon == nil) {
+        node.icon = [NSImage imageNamed:@"NSApplicationIcon"];
+    } else {
+        [node.icon setTemplate:YES];
+    }
+    return node;
+}
+
+- (NSImage *)imageForIconName:(NSString *)iconName {
+    if (iconName == nil || [iconName length] == 0) {
+        return nil;
+    }
+    // (1) we support a special syntax for icon path. If it starts with "System:" we use the system symbol image.
+    if ([iconName hasPrefix:@"System:"]) {
+        NSString *symbolName = [[iconName substringFromIndex:[@"System:" length]]
+                stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if ([symbolName length] == 0) {
+            return nil;
+        }
+        return [self systemSymbolImageNamed:symbolName];
+    }
+    // (2) else we just load the image from the file system.
+    return [[[NSImage alloc] initWithContentsOfFile:iconName] autorelease];
+}
+
+- (NSImage *)systemSymbolImageNamed:(NSString *)symbolName {
     Class imageClass = [NSImage class];
     SEL selector = NSSelectorFromString(@"imageWithSystemSymbolName:accessibilityDescription:");
     if ([imageClass respondsToSelector:selector]) {
-        printf("=====> systemSymbolImageNamed (2) : %s\n", [symbolName UTF8String]);
         typedef NSImage *(*SymbolImageFunc)(id, SEL, NSString *, NSString *);
         SymbolImageFunc func = (SymbolImageFunc)[imageClass methodForSelector:selector];
         NSImage *image = func(imageClass, selector, symbolName, nil);
         [image setTemplate:YES];
         return image;
     }
-    printf("=====> systemSymbolImageNamed (3) : %s\n", [symbolName UTF8String]);
     return [NSImage imageNamed:symbolName];
-}
-
-// FIXME: This is now a duplicate. Search for this in the View and remove it from there. But check the other version first, it might be better than this one!!!
-- (NSImage *)imageForIconName:(NSString *)iconName
-{
-    if (iconName == nil || [iconName length] == 0) {
-        return nil;
-    }
-
-    if ([iconName hasPrefix:@"System:"]) {
-        NSString *symbolName = [[iconName substringFromIndex:[@"System:" length]]
-                stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-
-        printf("=====> System icon: %s\n", [symbolName UTF8String]);
-
-        if ([symbolName length] == 0) {
-            return nil;
-        }
-
-        return [self systemSymbolImageNamed:symbolName];
-    }
-
-    if ([iconName hasPrefix:@"File:"]) {
-        NSString *filePath = [[iconName substringFromIndex:[@"File:" length]]
-                stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-
-        if ([filePath length] == 0) {
-            return nil;
-        }
-
-        return [[[NSImage alloc] initWithContentsOfFile:filePath] autorelease];
-    }
-
-    return [NSImage imageNamed:iconName];
-}
-
-- (WailsSidebarNode *)createNodeWithTitle:(NSString *)title iconName:(NSString *)iconName isGroup:(BOOL)isGroup
-{
-    WailsSidebarNode *node = [[WailsSidebarNode alloc] init];
-    node.isGroup = isGroup;
-    node.title = title;
-    printf("=====> Creating node: %s\n", [iconName UTF8String]);
-    node.icon = [self imageForIconName:iconName];
-    if (node.icon == nil) {
-        printf("=====> Could not create icon for node: %s\n", [iconName UTF8String]);
-        node.icon = [NSImage imageNamed:@"NSApplicationIcon"];
-    } else {
-        printf("=====> Created icon for node: %s\n", [iconName UTF8String]);
-        [node.icon setTemplate:YES];
-        printf("======> size: %f x %f\n", node.icon.size.width, node.icon.size.height);
-    }
-    return node;
-}
-
-- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName
-{
-    WailsSidebarNode *node = [self createNodeWithTitle:label iconName:iconName isGroup:NO];
-    [self.ungroupedItems addObject:node];
-    [node release];
-}
-
-- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded
-{
-    WailsSidebarNode *groupNode = [self createNodeWithTitle:title iconName:nil isGroup:YES];
-    // FIXME: We need initiallyExpanded in the node
-    //groupNode.initiallyExpanded = expanded;
-    [self.groups addObject:groupNode];
-    [groupNode release];
-}
-
-- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName
-{
-    WailsSidebarNode *lastGroup = [self.groups lastObject];
-    if (lastGroup == nil) {
-        return;
-    }
-    WailsSidebarNode *itemNode = [self createNodeWithTitle:label iconName:iconName isGroup:NO];
-    [lastGroup.children addObject:itemNode];
-    [itemNode release];
-}
-
-- (NSInteger)numberOfUngroupedItems
-{
-    return [self.ungroupedItems count];
-}
-
-- (WailsSidebarNode *)ungroupedNodeAtIndex:(NSInteger)nodeIndex
-{
-    if (nodeIndex < 0 || nodeIndex >= [self.ungroupedItems count]) {
-        return nil;
-    }
-    id node = [self.ungroupedItems objectAtIndex:nodeIndex];
-    if (![node isKindOfClass:[WailsSidebarNode class]]) {
-        return nil;
-    }
-    return (WailsSidebarNode *)node;
-}
-
-- (WailsSidebarNode *)groupNodeAtIndex:(NSInteger)groupIndex
-{
-    if (groupIndex < 0 || groupIndex >= [self.groups count]) {
-        return nil;
-    }
-    id node = [self.groups objectAtIndex:groupIndex];
-    if (![node isKindOfClass:[WailsSidebarNode class]]) {
-        return nil;
-    }
-    return (WailsSidebarNode *)node;
-}
-
-- (WailsSidebarNode *)childNodeAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
-{
-    WailsSidebarNode *groupNode = [self groupNodeAtIndex:groupIndex];
-    if (groupNode == nil) {
-        return nil;
-    }
-    if (itemIndex < 0 || itemIndex >= [groupNode.children count]) {
-        return nil;
-    }
-    id node = [groupNode.children objectAtIndex:itemIndex];
-    if (![node isKindOfClass:[WailsSidebarNode class]]) {
-        return nil;
-    }
-    return (WailsSidebarNode *)node;
-}
-
-- (NSString *)labelForUngroupedItemAtIndex:(NSInteger)itemIndex
-{
-    return [[self.ungroupedItems objectAtIndex:itemIndex] title];
-}
-
-- (NSImage *)iconForUngroupedItemAtIndex:(NSInteger)itemIndex
-{
-    return [[self.ungroupedItems objectAtIndex:itemIndex] icon];
-}
-
-- (NSInteger)numberOfGroups
-{
-    return [self.groups count];
-}
-
-- (NSString *)titleForGroupAtIndex:(NSInteger)groupIndex
-{
-    WailsSidebarNode *groupNode = [self groupNodeAtIndex:groupIndex];
-    return groupNode != nil ? groupNode.title : nil;
-}
-
-- (NSInteger)numberOfItemsInGroupAtIndex:(NSInteger)groupIndex
-{
-    WailsSidebarNode *groupNode = [self groupNodeAtIndex:groupIndex];
-    return groupNode != nil ? [groupNode.children count] : 0;
-}
-
-- (NSString *)labelForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
-{
-    WailsSidebarNode *itemNode = [self childNodeAtIndex:itemIndex inGroupAtIndex:groupIndex];
-    return itemNode != nil ? itemNode.title : nil;
-}
-
-- (NSImage *)iconForItemAtIndex:(NSInteger)itemIndex inGroupAtIndex:(NSInteger)groupIndex
-{
-    WailsSidebarNode *itemNode = [self childNodeAtIndex:itemIndex inGroupAtIndex:groupIndex];
-    return itemNode != nil ? itemNode.icon : nil;
-}
-
-- (BOOL)isGroupInitiallyExpandedAtIndex:(NSInteger)groupIndex
-{
-    return YES;
-    // FIXME: this
-    //WailsSidebarNode *groupNode = [self groupNodeAtIndex:groupIndex];
-    //return groupNode != nil ? groupNode.initiallyExpanded : NO;
 }
 
 @end
 
 // WailsSidebarDataSource is a basic implementation of NSOutlineViewDataSource,
-// using WailsSidebarViewModel as the source and creating WailsSidebarNode objects.
+// using WailsSidebarViewModel as the source.
 @interface WailsSidebarDataSource : NSObject <NSOutlineViewDataSource>
 
 @property (nonatomic, assign) id<WailsSidebarViewModel> model;
@@ -286,7 +232,9 @@
     [super dealloc];
 }
 
-- (NSArray<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded
+#pragma mark - internal helpers
+
+- (NSArray<WailsSidebarGroupNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded
 {
     NSMutableArray<WailsSidebarNode *> *nodes = [NSMutableArray array];
     if (self.model == nil || [self.rootNodes count] == 0) {
@@ -594,7 +542,6 @@
     NSTableCellView *itemCell = [self createBaseCellWithWidth:tableColumn.width rowHeight:28.0];
     NSImageView *imageView = [[[NSImageView alloc] initWithFrame:NSMakeRect(6, 4, 16, 16)] autorelease];
     NSImage *resolvedImage = node.icon;
-    printf("=======> resolvedImage: %p\n", resolvedImage);
     [resolvedImage setTemplate:YES];
     [imageView setImage:resolvedImage];
     [imageView setImageScaling:NSImageScaleProportionallyDown];
@@ -608,34 +555,6 @@
     [itemCell addSubview:textField];
 
     return itemCell;
-}
-
-// Helper that loads an icon from a string.
-- (NSImage *)imageForIconString:(NSString *)iconString
-{
-    if (iconString == nil || [iconString length] == 0) {
-        return nil;
-    }
-    // We support system icons by checking for the prefix "System:"
-    if ([iconString hasPrefix:@"System:"]) {
-        NSString *symbolName = [iconString substringFromIndex:[@"System:" length]];
-        symbolName = [symbolName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if ([symbolName length] == 0) {
-            return nil;
-        }
-        if (@available(macOS 11.0, *)) {
-            return [NSImage systemImageNamed:symbolName];
-        }
-        return [NSImage imageNamed:symbolName];
-    }
-    // It's just a file path, so we load it from the disk
-    NSString *filePath = [iconString substringFromIndex:[@"File:" length]];
-    filePath = [filePath stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if ([filePath length] == 0) {
-        return nil;
-    }
-    // FIXME: Now we are doing autorelease all of a sudden...
-    return [[[NSImage alloc] initWithContentsOfFile:filePath] autorelease];
 }
 
 - (CGFloat)outlineView:(NSOutlineView *)outlineView heightOfRowByItem:(id)item
