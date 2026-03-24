@@ -1,6 +1,7 @@
 package darwin
 
 import (
+	"log/slog"
 	"sort"
 	"unsafe"
 
@@ -95,6 +96,7 @@ func (m *SidebarModel) addItem(item native.SidebarItem) {
 	cLabel := C.CString(item.Name)
 	var cIcon *C.char
 	if item.Icon != nil {
+		slog.Info("====> Adding sidebar item with icon: ", slog.String("Icon", *item.Icon))
 		cIcon = C.CString(*item.Icon)
 	}
 	C.SidebarModelAddItem(m.ptr, cLabel, cIcon)
