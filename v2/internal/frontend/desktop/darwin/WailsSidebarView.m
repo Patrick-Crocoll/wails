@@ -59,23 +59,27 @@
 @interface WailsSidebarItemNode : WailsSidebarNode
 
 @property(nonatomic, retain) NSImage *icon;
+@property(nonatomic, retain) NSColor *color;
 
 @end
 
 @implementation WailsSidebarItemNode
 
 @synthesize icon;
+@synthesize color;
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         self->icon = nil;
+        self->color = nil;
     }
     return self;
 }
 
 - (void)dealloc {
     [icon release];
+    [color release];
     [super dealloc];
 }
 
@@ -83,7 +87,7 @@
 
 // WailsSidebarDataSource is a basic implementation of NSOutlineViewDataSource,
 // using WailsSidebarViewModel as the source.
-@interface WailsSidebarDataSource()
+@interface WailsSidebarDataSource ()
 
 @property(nonatomic, retain) NSMutableArray *rootNodes;
 
@@ -106,8 +110,10 @@
     [super dealloc];
 }
 
-- (NSArray<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded {
-    NSMutableArray<WailsSidebarNode *> *nodes = [NSMutableArray array];
+- (NSArray
+
+<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded {
+    NSMutableArray < WailsSidebarNode * > *nodes = [NSMutableArray array];
     if ([self.rootNodes count] == 0) {
         return nodes;
     }
@@ -117,7 +123,7 @@
             // only groups can be expanded/collapsed
             continue;
         }
-        WailsSidebarGroupNode *group = (WailsSidebarGroupNode*)rootNode;
+        WailsSidebarGroupNode *group = (WailsSidebarGroupNode *) rootNode;
         if (group.isExpanded == shouldBeExpanded) {
             [nodes addObject:rootNode];
         }
@@ -126,11 +132,15 @@
     return nodes;
 }
 
-- (NSArray<WailsSidebarNode *> *)expandedNodes {
+- (NSArray
+
+<WailsSidebarNode *> *)expandedNodes {
     return [self nodesMatchingExpansionState:YES];
 }
 
-- (NSArray<WailsSidebarNode *> *)collapsedNodes {
+- (NSArray
+
+<WailsSidebarNode *> *)collapsedNodes {
     return [self nodesMatchingExpansionState:NO];
 }
 
@@ -181,7 +191,15 @@
 - (WailsSidebarItemNode *)createNodeWithTitle:(NSString *)title iconName:(NSString *)iconName {
     WailsSidebarItemNode *node = [[WailsSidebarItemNode alloc] init];
     node.title = title;
-    node.icon = [self imageForIconName:iconName];
+    if ([self isSystemIconName:iconName]) {
+        NSArray *parts = [self getSystemImageParts:iconName];
+        node.icon = [self imageForSystemName:[parts objectAtIndex:0]];
+        if ([parts count] > 1) {
+            node.color = [self colorForColorString:[parts objectAtIndex:1]];
+        }
+    } else if ([self isImageFilePath:iconName]) {
+        node.icon = [[[NSImage alloc] initWithContentsOfFile:iconName] autorelease];
+    }
     if (node.icon == nil) {
         node.icon = [NSImage imageNamed:@"NSApplicationIcon"];
     } else {
@@ -190,21 +208,28 @@
     return node;
 }
 
-- (NSImage *)imageForIconName:(NSString *)iconName {
-    if (iconName == nil || [iconName length] == 0) {
+- (BOOL)isSystemIconName:(NSString *)iconName {
+    return iconName != nil && [iconName hasPrefix:@"System:"];
+}
+
+- (BOOL)isImageFilePath:(NSString *)iconName {
+    return iconName != nil && [iconName length] > 0 && ![self isSystemIconName:iconName];
+}
+
+- (NSArray *)getSystemImageParts:(NSString *)iconName {
+    return [iconName componentsSeparatedByString:@"/"];
+}
+
+- (NSImage *)imageForSystemName:(NSString *)iconSystemName {
+    if (iconSystemName == nil || [iconSystemName length] == 0) {
         return nil;
     }
-    // (1) we support a special syntax for icon path. If it starts with "System:" we use the system symbol image.
-    if ([iconName hasPrefix:@"System:"]) {
-        NSString *symbolName = [[iconName substringFromIndex:[@"System:" length]]
+    NSString *symbolName = iconSystemName;
+    if ([symbolName hasPrefix:@"System:"]) {
+        symbolName = [[symbolName substringFromIndex:[@"System:" length]]
                 stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if ([symbolName length] == 0) {
-            return nil;
-        }
-        return [self systemSymbolImageNamed:symbolName];
     }
-    // (2) else we just load the image from the file system.
-    return [[[NSImage alloc] initWithContentsOfFile:iconName] autorelease];
+    return [self systemSymbolImageNamed:symbolName];
 }
 
 - (NSImage *)systemSymbolImageNamed:(NSString *)symbolName {
@@ -218,6 +243,46 @@
         return image;
     }
     return [NSImage imageNamed:symbolName];
+}
+
+- (NSColor *)colorForColorString:(NSString *)colorString {
+    if (colorString == nil) {
+        return nil;
+    }
+    NSString *hexString = colorString;
+    if ([hexString hasPrefix:@"Color:"]) {
+        hexString = [[hexString substringFromIndex:[@"Color:" length]]
+                stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
+    return [self colorFromHexString:hexString];
+}
+
+- (NSColor *)colorFromHexString:(NSString *)hexString {
+    if (hexString == nil) {
+        return nil;
+    }
+    NSString *hex = [hexString stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    hex = [hex stringByReplacingOccurrencesOfString:@"#" withString:@""];
+    if ([hex length] != 6 && [hex length] != 8) {
+        return nil;
+    }
+    unsigned int value = 0;
+    NSScanner *scanner = [NSScanner scannerWithString:hex];
+    if (![scanner scanHexInt:&value]) {
+        return nil;
+    }
+    CGFloat r = 0, g = 0, b = 0, a = 1.0;
+    if ([hex length] == 6) {
+        r = ((value >> 16) & 0xFF) / 255.0;
+        g = ((value >> 8) & 0xFF) / 255.0;
+        b = (value & 0xFF) / 255.0;
+    } else {
+        r = ((value >> 24) & 0xFF) / 255.0;
+        g = ((value >> 16) & 0xFF) / 255.0;
+        b = ((value >> 8) & 0xFF) / 255.0;
+        a = (value & 0xFF) / 255.0;
+    }
+    return [NSColor colorWithCalibratedRed:r green:g blue:b alpha:a];
 }
 
 #pragma mark - NSOutlineViewDataSource
@@ -429,6 +494,13 @@
     NSImageView *imageView = [[[NSImageView alloc] initWithFrame:NSMakeRect(6, 4, 16, 16)] autorelease];
     NSImage *resolvedImage = node.icon;
     [imageView setImage:resolvedImage];
+    if (node.color != nil) {
+        if (@available(macOS 10.14, *)) {
+            if ([imageView respondsToSelector:@selector(setContentTintColor:)]) {
+                [imageView setContentTintColor:node.color];
+            }
+        }
+    }
     [imageView setImageScaling:NSImageScaleProportionallyDown];
     NSTextField *textField = [self createBaseTextFieldWithFrame:NSMakeRect(28, 3, tableColumn.width - 34, 18)];
     [textField setStringValue:node.title != nil ? node.title : @""];
