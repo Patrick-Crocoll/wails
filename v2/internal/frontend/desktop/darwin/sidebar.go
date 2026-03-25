@@ -1,7 +1,6 @@
 package darwin
 
 import (
-	"log/slog"
 	"sort"
 	"unsafe"
 
@@ -13,29 +12,29 @@ import (
 #cgo LDFLAGS: -framework Foundation -framework Cocoa -framework WebKit
 
 #import <Foundation/Foundation.h>
-#import "WailsSidebarView.h"  // Assumes this header is available
+#import "WailsSidebarView.h"
 #import "WailsContext.h"  // For context
 
 // C wrappers for Objective-C methods
 void* NewSidebarModel(void) {
-    return [[WailsSidebarModel alloc] init];
+    return [[WailsSidebarDataSource alloc] init];
 }
 
 void SidebarModelAddUngroupedItem(void* ptr, char* label, char* icon) {
-    WailsSidebarModel* model = (WailsSidebarModel*)ptr;
+    WailsSidebarDataSource* model = (WailsSidebarDataSource*)ptr;
     NSString* nsLabel = [NSString stringWithUTF8String:label];
     NSString* nsIcon = icon ? [NSString stringWithUTF8String:icon] : nil;
     [model addUngroupedItemWithLabel:nsLabel iconName:nsIcon];
 }
 
 void SidebarModelAddGroup(void* ptr, char* title, int expanded) {
-    WailsSidebarModel* model = (WailsSidebarModel*)ptr;
+    WailsSidebarDataSource* model = (WailsSidebarDataSource*)ptr;
     NSString* nsTitle = [NSString stringWithUTF8String:title];
     [model addGroupWithTitle:nsTitle initiallyExpanded:(BOOL)expanded];
 }
 
 void SidebarModelAddItem(void* ptr, char* label, char* icon) {
-    WailsSidebarModel* model = (WailsSidebarModel*)ptr;
+    WailsSidebarDataSource* model = (WailsSidebarDataSource*)ptr;
     NSString* nsLabel = [NSString stringWithUTF8String:label];
     NSString* nsIcon = icon ? [NSString stringWithUTF8String:icon] : nil;
     [model addItemWithLabel:nsLabel iconName:nsIcon];
@@ -43,7 +42,7 @@ void SidebarModelAddItem(void* ptr, char* label, char* icon) {
 
 void SetSidebarModel(void* ctx, void* modelPtr) {
     WailsContext* context = (WailsContext*)ctx;
-    WailsSidebarModel* model = (WailsSidebarModel*)modelPtr;
+    WailsSidebarDataSource* model = (WailsSidebarDataSource*)modelPtr;
     [context.sidebar setModel:model];
     [context.sidebar reloadData];  // Refresh after setting model
 }
@@ -96,7 +95,6 @@ func (m *SidebarModel) addItem(item native.SidebarItem) {
 	cLabel := C.CString(item.Name)
 	var cIcon *C.char
 	if item.Icon != nil {
-		slog.Info("====> Adding sidebar item with icon: ", slog.String("Icon", *item.Icon))
 		cIcon = C.CString(*item.Icon)
 	}
 	C.SidebarModelAddItem(m.ptr, cLabel, cIcon)
@@ -141,5 +139,8 @@ func CreateSidebarModel(sidebar native.Sidebar) *SidebarModel {
 // SetContextSidebarModel function to set the model on the context's sidebar
 func SetContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
 	C.SetSidebarModel(context, model.ptr)
-	// Optionally release model here if not retained, but ObjC will retain it via setModel:
+	// We pass ownership of the model to the objective-c class, so we call release
+	// to decrease the reference counter. Now we are not the owner of the model any
+	// more. When we want the sidebar to change, we have to create a new model.
+	model.release()
 }
