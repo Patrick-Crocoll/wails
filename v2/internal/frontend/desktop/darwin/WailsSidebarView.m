@@ -106,6 +106,34 @@
     [super dealloc];
 }
 
+- (NSArray<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded {
+    NSMutableArray<WailsSidebarNode *> *nodes = [NSMutableArray array];
+    if ([self.rootNodes count] == 0) {
+        return nodes;
+    }
+    NSInteger currentGroupIndex = 0;
+    for (WailsSidebarNode *rootNode in self.rootNodes) {
+        if (![rootNode isKindOfClass:[WailsSidebarGroupNode class]]) {
+            // only groups can be expanded/collapsed
+            continue;
+        }
+        WailsSidebarGroupNode *group = (WailsSidebarGroupNode*)rootNode;
+        if (group.isExpanded == shouldBeExpanded) {
+            [nodes addObject:rootNode];
+        }
+        currentGroupIndex++;
+    }
+    return nodes;
+}
+
+- (NSArray<WailsSidebarNode *> *)expandedNodes {
+    return [self nodesMatchingExpansionState:YES];
+}
+
+- (NSArray<WailsSidebarNode *> *)collapsedNodes {
+    return [self nodesMatchingExpansionState:NO];
+}
+
 #pragma mark - public methods
 
 - (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName {
@@ -344,7 +372,12 @@
 }
 
 - (void)expandNodes {
-    // TODO: Should we do this?
+    for (WailsSidebarNode *rootNode in _model.expandedNodes) {
+        [self.outlineView expandItem:rootNode];
+    }
+    for (WailsSidebarNode *rootNode in _model.collapsedNodes) {
+        [self.outlineView collapseItem:rootNode];
+    }
 }
 
 #pragma mark - NSOutlineViewDelegate
