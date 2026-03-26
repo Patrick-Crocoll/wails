@@ -10,9 +10,45 @@ type SidebarElement[T SidebarElementValue] struct {
 }
 
 type Sidebar struct {
-	SidebarGroups []SidebarElement[SidebarGroup]
-	// The items that do not belong to any group
-	SidebarItems []SidebarElement[SidebarItem]
+	// description of the native sidebar
+
+	ModelProvider SidebarModelProvider
+
+	// callbacks from the sidebar
+
+	OnControlReady SidebarControlHandler
+	OnItemSelected SidebarItemSelectedHandler
+	OnGroupToggled SidebarGroupToggledHandler
 }
 
-type SidebarProvider func() Sidebar
+type SidebarModel struct {
+	SidebarGroups []SidebarElement[SidebarGroup]
+	SidebarItems  []SidebarElement[SidebarItem]
+	WidthPixels   int
+	IsExpanded    bool
+}
+
+type SidebarModelProvider func() SidebarModel
+
+type SidebarItemSelectEvent struct {
+	Item *SidebarItem
+}
+
+type SidebarGroupToggleEvent struct {
+	Group      *SidebarGroup
+	IsExpanded bool
+}
+
+type SidebarControlHandler func(ctrl SidebarControl)
+
+type SidebarItemSelectedHandler func(evt SidebarItemSelectEvent)
+type SidebarGroupToggledHandler func(evt SidebarGroupToggleEvent)
+
+// TODO: Do we have to return errors?
+
+type SidebarControl interface {
+	Refresh()
+	SetWidth(width int)
+	Expand()
+	Collapse()
+}

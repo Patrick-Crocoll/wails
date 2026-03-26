@@ -62,10 +62,6 @@ func newSidebarModel() *SidebarModel {
 	return &SidebarModel{ptr: ptr}
 }
 
-func (m *SidebarModel) release() {
-	C.ReleaseSidebarModel(m.ptr)
-}
-
 func (m *SidebarModel) addUngroupedItem(item native.SidebarItem) {
 	cLabel := C.CString(item.Name)
 	var cIcon *C.char
@@ -106,9 +102,8 @@ func (m *SidebarModel) addItem(item native.SidebarItem) {
 
 // CreateSidebarModel builds a WailsSidebarModel from native.Sidebar.
 // Call release() on the result when done.
-func CreateSidebarModel(sidebar native.Sidebar) *SidebarModel {
+func CreateSidebarModel(sidebar native.SidebarModel) *SidebarModel {
 	model := newSidebarModel()
-
 	// Sort and add ungrouped items
 	sort.Slice(
 		sidebar.SidebarItems, func(i, j int) bool {
@@ -118,7 +113,6 @@ func CreateSidebarModel(sidebar native.Sidebar) *SidebarModel {
 	for _, elem := range sidebar.SidebarItems {
 		model.addUngroupedItem(elem.Value)
 	}
-
 	// Sort and add groups with their items
 	sort.Slice(
 		sidebar.SidebarGroups, func(i, j int) bool {
@@ -132,7 +126,6 @@ func CreateSidebarModel(sidebar native.Sidebar) *SidebarModel {
 			model.addItem(item)
 		}
 	}
-
 	return model
 }
 
@@ -142,5 +135,5 @@ func SetContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
 	// We pass ownership of the model to the objective-c class, so we call release
 	// to decrease the reference counter. Now we are not the owner of the model any
 	// more. When we want the sidebar to change, we have to create a new model.
-	model.release()
+	C.ReleaseSidebarModel(model.ptr)
 }

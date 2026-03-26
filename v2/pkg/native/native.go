@@ -1,5 +1,5 @@
 package native
 
 type Native struct {
-	SidebarProvider *SidebarProvider
+	Sidebar *Sidebar
 }
