@@ -1,3 +1,6 @@
+//go:build darwin
+// +build darwin
+
 package darwin
 
 import (
@@ -33,24 +36,24 @@ void SetSidebarCallbacks(void* ctx) {
     };
 }
 
-void SidebarModelAddUngroupedItem(void* ptr, char* label, char* icon) {
+void SidebarModelAddUngroupedItem(void* ptr, char* label, char* icon, int itemId) {
     WailsSidebarDataSource* model = (WailsSidebarDataSource*)ptr;
     NSString* nsLabel = [NSString stringWithUTF8String:label];
     NSString* nsIcon = icon ? [NSString stringWithUTF8String:icon] : nil;
-    [model addUngroupedItemWithLabel:nsLabel iconName:nsIcon];
+    [model addUngroupedItemWithLabel:nsLabel iconName:nsIcon itemId:itemId];
 }
 
-void SidebarModelAddGroup(void* ptr, char* title, int expanded) {
+void SidebarModelAddGroup(void* ptr, char* title, int expanded, int groupId) {
     WailsSidebarDataSource* model = (WailsSidebarDataSource*)ptr;
     NSString* nsTitle = [NSString stringWithUTF8String:title];
-    [model addGroupWithTitle:nsTitle initiallyExpanded:(BOOL)expanded];
+    [model addGroupWithTitle:nsTitle initiallyExpanded:(BOOL)expanded groupId:groupId];
 }
 
-void SidebarModelAddItem(void* ptr, char* label, char* icon) {
+void SidebarModelAddItem(void* ptr, char* label, char* icon, int itemId) {
     WailsSidebarDataSource* model = (WailsSidebarDataSource*)ptr;
     NSString* nsLabel = [NSString stringWithUTF8String:label];
     NSString* nsIcon = icon ? [NSString stringWithUTF8String:icon] : nil;
-    [model addItemWithLabel:nsLabel iconName:nsIcon];
+    [model addItemWithLabel:nsLabel iconName:nsIcon itemId:itemId];
 }
 
 void SetSidebarModel(void* ctx, void* modelPtr) {
@@ -85,7 +88,7 @@ func (m *SidebarModel) addUngroupedItem(item native.SidebarItem) {
 	if item.Icon != nil {
 		cIcon = C.CString(*item.Icon)
 	}
-	C.SidebarModelAddUngroupedItem(m.ptr, cLabel, cIcon)
+	C.SidebarModelAddUngroupedItem(m.ptr, cLabel, cIcon, 0)
 	C.free(unsafe.Pointer(cLabel))
 	if cIcon != nil {
 		C.free(unsafe.Pointer(cIcon))
@@ -100,7 +103,7 @@ func (m *SidebarModel) addGroup(group native.SidebarGroup) {
 	} else {
 		expanded = 0
 	}
-	C.SidebarModelAddGroup(m.ptr, cTitle, expanded)
+	C.SidebarModelAddGroup(m.ptr, cTitle, expanded, 0)
 	C.free(unsafe.Pointer(cTitle))
 }
 
@@ -110,7 +113,7 @@ func (m *SidebarModel) addItem(item native.SidebarItem) {
 	if item.Icon != nil {
 		cIcon = C.CString(*item.Icon)
 	}
-	C.SidebarModelAddItem(m.ptr, cLabel, cIcon)
+	C.SidebarModelAddItem(m.ptr, cLabel, cIcon, 0)
 	C.free(unsafe.Pointer(cLabel))
 	if cIcon != nil {
 		C.free(unsafe.Pointer(cIcon))

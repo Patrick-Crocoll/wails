@@ -10,10 +10,10 @@ typedef void (^WailsSidebarGroupToggledHandler)(NSString *groupLabel, BOOL expan
 // declaration of a data source
 @interface WailsSidebarDataSource : NSObject <NSOutlineViewDataSource>
 
-- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName;
-- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded;
+- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName itemId:(int)itemId;
+- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded groupId:(int)groupId;
 // Adds to the last group
-- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName;
+- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName itemId:(int)itemId;
 
 @end
 

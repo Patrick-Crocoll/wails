@@ -146,20 +146,20 @@
 
 #pragma mark - public methods
 
-- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName {
+- (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName itemId:(int)itemId {
     WailsSidebarItemNode *node = [self createNodeWithTitle:label iconName:iconName];
     [self.rootNodes addObject:node];
     [node release];
 }
 
-- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded {
+- (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded groupId:(int)groupId {
     WailsSidebarGroupNode *groupNode = [self createGroupWithTitle:title];
     groupNode.isExpanded = expanded;
     [self.rootNodes addObject:groupNode];
     [groupNode release];
 }
 
-- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName {
+- (void)addItemWithLabel:(NSString *)label iconName:(NSString *)iconName itemId:(int)itemId {
     // (1) Find the last group
     WailsSidebarGroupNode *lastGroup = nil;
     for (NSInteger i = [self.rootNodes count] - 1; i >= 0; i--) {
@@ -171,7 +171,7 @@
     }
     // (2) there is no group? -> add to ungrouped items
     if (lastGroup == nil) {
-        [self addUngroupedItemWithLabel:label iconName:iconName];
+        [self addUngroupedItemWithLabel:label iconName:iconName itemId:itemId];;
         return;
     }
     // (3) add to the group
