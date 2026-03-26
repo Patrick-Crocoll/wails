@@ -18,8 +18,8 @@ import (
 #import "WailsSidebarView.h"
 #import "WailsContext.h"  // For context
 
-extern void GoSidebarItemSelected(char* itemLabel);
-extern void GoSidebarGroupToggled(char* groupLabel, int expanded);
+extern void GoSidebarItemSelected(int itemId);
+extern void GoSidebarGroupToggled(int groupId, int groupState);
 
 // C wrappers for Objective-C methods
 void* NewSidebarModel(void) {
@@ -28,11 +28,11 @@ void* NewSidebarModel(void) {
 
 void SetSidebarCallbacks(void* ctx) {
     WailsContext* context = (WailsContext*)ctx;
-    context.sidebar.onItemSelected = ^(NSString *itemLabel) {
-        GoSidebarItemSelected((char*)[itemLabel UTF8String]);
+    context.sidebar.onItemSelected = ^(int itemId) {
+        GoSidebarItemSelected(itemId);
     };
-    context.sidebar.onGroupToggled = ^(NSString *groupLabel, BOOL expanded) {
-        GoSidebarGroupToggled((char*)[groupLabel UTF8String], expanded ? 1 : 0);
+    context.sidebar.onGroupToggled = ^(int groupId, int groupState) {
+        GoSidebarGroupToggled(groupId, groupState);
     };
 }
 
@@ -69,7 +69,7 @@ void ReleaseSidebarModel(void* ptr) {
 */
 import "C"
 
-func SetSidebarTestCallbacks(context unsafe.Pointer) {
+func SetSidebarCallbacks(context unsafe.Pointer) {
 	C.SetSidebarCallbacks(context)
 }
 
@@ -82,20 +82,20 @@ func newSidebarModel() *SidebarModel {
 	return &SidebarModel{ptr: ptr}
 }
 
-func (m *SidebarModel) addUngroupedItem(item native.SidebarItem) {
+func (m *SidebarModel) addUngroupedItem(item native.SidebarItem, itemId int) {
 	cLabel := C.CString(item.Name)
 	var cIcon *C.char
 	if item.Icon != nil {
 		cIcon = C.CString(*item.Icon)
 	}
-	C.SidebarModelAddUngroupedItem(m.ptr, cLabel, cIcon, 0)
+	C.SidebarModelAddUngroupedItem(m.ptr, cLabel, cIcon, C.int(itemId))
 	C.free(unsafe.Pointer(cLabel))
 	if cIcon != nil {
 		C.free(unsafe.Pointer(cIcon))
 	}
 }
 
-func (m *SidebarModel) addGroup(group native.SidebarGroup) {
+func (m *SidebarModel) addGroup(group native.SidebarGroup, groupId int) {
 	cTitle := C.CString(group.Name)
 	var expanded C.int
 	if group.Expanded {
@@ -103,17 +103,17 @@ func (m *SidebarModel) addGroup(group native.SidebarGroup) {
 	} else {
 		expanded = 0
 	}
-	C.SidebarModelAddGroup(m.ptr, cTitle, expanded, 0)
+	C.SidebarModelAddGroup(m.ptr, cTitle, expanded, C.int(groupId))
 	C.free(unsafe.Pointer(cTitle))
 }
 
-func (m *SidebarModel) addItem(item native.SidebarItem) {
+func (m *SidebarModel) addItem(item native.SidebarItem, itemId int) {
 	cLabel := C.CString(item.Name)
 	var cIcon *C.char
 	if item.Icon != nil {
 		cIcon = C.CString(*item.Icon)
 	}
-	C.SidebarModelAddItem(m.ptr, cLabel, cIcon, 0)
+	C.SidebarModelAddItem(m.ptr, cLabel, cIcon, C.int(itemId))
 	C.free(unsafe.Pointer(cLabel))
 	if cIcon != nil {
 		C.free(unsafe.Pointer(cIcon))
@@ -122,7 +122,10 @@ func (m *SidebarModel) addItem(item native.SidebarItem) {
 
 // CreateSidebarModel builds a WailsSidebarModel from native.Sidebar.
 // Call release() on the result when done.
-func CreateSidebarModel(sidebar native.SidebarModel) *SidebarModel {
+func CreateSidebarModel(
+	sidebar native.SidebarModel, itemIdProvider func(native.SidebarItem) int,
+	groupIdProvider func(native.SidebarGroup) int,
+) *SidebarModel {
 	model := newSidebarModel()
 	// Sort and add ungrouped items
 	sort.Slice(
@@ -131,7 +134,7 @@ func CreateSidebarModel(sidebar native.SidebarModel) *SidebarModel {
 		},
 	)
 	for _, elem := range sidebar.SidebarItems {
-		model.addUngroupedItem(elem.Value)
+		model.addUngroupedItem(elem.Value, itemIdProvider(elem.Value))
 	}
 	// Sort and add groups with their items
 	sort.Slice(
@@ -141,9 +144,9 @@ func CreateSidebarModel(sidebar native.SidebarModel) *SidebarModel {
 	)
 	for _, gelem := range sidebar.SidebarGroups {
 		group := gelem.Value
-		model.addGroup(group)
+		model.addGroup(group, groupIdProvider(group))
 		for _, item := range group.Items {
-			model.addItem(item)
+			model.addItem(item, itemIdProvider(item))
 		}
 	}
 	return model
@@ -153,7 +156,7 @@ func CreateSidebarModel(sidebar native.SidebarModel) *SidebarModel {
 func SetContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
 	C.SetSidebarModel(context, model.ptr)
 	// We pass ownership of the model to the objective-c class, so we call release
-	// to decrease the reference counter. Now we are not the owner of the model any
-	// more. When we want the sidebar to change, we have to create a new model.
+	// to decrease the reference counter. Now we are not the owners of the model anymore.
+	// When we want the sidebar to change, we have to create a new model.
 	C.ReleaseSidebarModel(model.ptr)
 }

@@ -4,17 +4,20 @@
 @interface WailsSidebarNode : NSObject
 
 @property(nonatomic, retain) NSString *title;
+@property(nonatomic, assign) int id;
 
 @end
 
 @implementation WailsSidebarNode
 
 @synthesize title;
+@synthesize id;
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         self->title = nil;
+        self->id = -1;
     }
     return self;
 }
@@ -147,13 +150,13 @@
 #pragma mark - public methods
 
 - (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName itemId:(int)itemId {
-    WailsSidebarItemNode *node = [self createNodeWithTitle:label iconName:iconName];
+    WailsSidebarItemNode *node = [self createNodeWithTitle:label iconName:iconName itemId:itemId];
     [self.rootNodes addObject:node];
     [node release];
 }
 
 - (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded groupId:(int)groupId {
-    WailsSidebarGroupNode *groupNode = [self createGroupWithTitle:title];
+    WailsSidebarGroupNode *groupNode = [self createGroupWithTitle:title groupId:groupId];
     groupNode.isExpanded = expanded;
     [self.rootNodes addObject:groupNode];
     [groupNode release];
@@ -171,26 +174,28 @@
     }
     // (2) there is no group? -> add to ungrouped items
     if (lastGroup == nil) {
-        [self addUngroupedItemWithLabel:label iconName:iconName itemId:itemId];;
+        [self addUngroupedItemWithLabel:label iconName:iconName itemId:itemId];
         return;
     }
     // (3) add to the group
-    WailsSidebarItemNode *itemNode = [self createNodeWithTitle:label iconName:iconName];
+    WailsSidebarItemNode *itemNode = [self createNodeWithTitle:label iconName:iconName itemId:itemId];
     [lastGroup.children addObject:itemNode];
     [itemNode release];
 }
 
 #pragma mark - internal helpers
 
-- (WailsSidebarGroupNode *)createGroupWithTitle:(NSString *)title {
+- (WailsSidebarGroupNode *)createGroupWithTitle:(NSString *)title groupId:(int)groupId {
     WailsSidebarGroupNode *node = [[WailsSidebarGroupNode alloc] init];
     node.title = title;
+    node.id = groupId;
     return node;
 }
 
-- (WailsSidebarItemNode *)createNodeWithTitle:(NSString *)title iconName:(NSString *)iconName {
+- (WailsSidebarItemNode *)createNodeWithTitle:(NSString *)title iconName:(NSString *)iconName itemId:(int)itemId {
     WailsSidebarItemNode *node = [[WailsSidebarItemNode alloc] init];
     node.title = title;
+    node.id = itemId;
     if ([self isSystemIconName:iconName]) {
         NSArray *parts = [self getSystemImageParts:iconName];
         node.icon = [self imageForSystemName:[parts objectAtIndex:0]];
@@ -528,7 +533,7 @@
     }
     if ([item isKindOfClass:[WailsSidebarItemNode class]] && self.onItemSelected != nil) {
         WailsSidebarItemNode *node = (WailsSidebarItemNode *) item;
-        self.onItemSelected(node.title);
+        self.onItemSelected(node.id);
     }
 }
 
@@ -539,7 +544,7 @@
     }
     if ([item isKindOfClass:[WailsSidebarGroupNode class]] && self.onGroupToggled != nil) {
         WailsSidebarGroupNode *node = (WailsSidebarGroupNode *) item;
-        self.onGroupToggled(node.title, YES);
+        self.onGroupToggled(node.id, 1);
     }
 }
 
@@ -550,7 +555,7 @@
     }
     if ([item isKindOfClass:[WailsSidebarGroupNode class]] && self.onGroupToggled != nil) {
         WailsSidebarGroupNode *node = (WailsSidebarGroupNode *) item;
-        self.onGroupToggled(node.title, NO);
+        self.onGroupToggled(node.id, 0);
     }
 }
 

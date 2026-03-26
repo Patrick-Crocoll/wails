@@ -295,14 +295,6 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
 
     self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
 
-    self.sidebar.onItemSelected = ^(NSString *itemLabel) {
-        NSLog(@"Selected item: %@", itemLabel);
-    };
-
-    self.sidebar.onGroupToggled = ^(NSString *groupLabel, BOOL expanded) {
-        NSLog(@"Group %@ %@", groupLabel, expanded ? @"expanded" : @"collapsed");
-    };
-
     NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
     [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
 

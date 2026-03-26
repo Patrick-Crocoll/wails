@@ -4,8 +4,8 @@
 #import <Cocoa/Cocoa.h>
 
 // declaration of the callbacks
-typedef void (^WailsSidebarSelectionChangedHandler)(NSString *itemLabel);
-typedef void (^WailsSidebarGroupToggledHandler)(NSString *groupLabel, BOOL expanded);
+typedef void (^WailsSidebarSelectionChangedHandler)(int itemId);
+typedef void (^WailsSidebarGroupToggledHandler)(int groupId, int state);
 
 // declaration of a data source
 @interface WailsSidebarDataSource : NSObject <NSOutlineViewDataSource>
