@@ -15,9 +15,22 @@ import (
 #import "WailsSidebarView.h"
 #import "WailsContext.h"  // For context
 
+extern void GoSidebarItemSelected(char* itemLabel);
+extern void GoSidebarGroupToggled(char* groupLabel, int expanded);
+
 // C wrappers for Objective-C methods
 void* NewSidebarModel(void) {
     return [[WailsSidebarDataSource alloc] init];
+}
+
+void SetSidebarCallbacks(void* ctx) {
+    WailsContext* context = (WailsContext*)ctx;
+    context.sidebar.onItemSelected = ^(NSString *itemLabel) {
+        GoSidebarItemSelected((char*)[itemLabel UTF8String]);
+    };
+    context.sidebar.onGroupToggled = ^(NSString *groupLabel, BOOL expanded) {
+        GoSidebarGroupToggled((char*)[groupLabel UTF8String], expanded ? 1 : 0);
+    };
 }
 
 void SidebarModelAddUngroupedItem(void* ptr, char* label, char* icon) {
@@ -52,6 +65,10 @@ void ReleaseSidebarModel(void* ptr) {
 }
 */
 import "C"
+
+func SetSidebarTestCallbacks(context unsafe.Pointer) {
+	C.SetSidebarCallbacks(context)
+}
 
 type SidebarModel struct {
 	ptr unsafe.Pointer

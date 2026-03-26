@@ -22,6 +22,7 @@ import (
 	"unsafe"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/native"
 
 	"github.com/wailsapp/wails/v2/pkg/options"
 )
@@ -34,6 +35,7 @@ type Window struct {
 	context unsafe.Pointer
 
 	applicationMenu *menu.Menu
+	nativeSidebar   *native.Sidebar
 }
 
 func bool2Cint(value bool) C.int {
