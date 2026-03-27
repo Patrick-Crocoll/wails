@@ -295,8 +295,6 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
         [_splitView setVertical:YES];
         [_splitView setDividerStyle:NSSplitViewDividerStyleThin];
         self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
-        // FIXME: put this call to somewhere it can be called from go-code
-        [_splitView setPosition:800 ofDividerAtIndex:0];
         NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
         [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
         [self.webview setFrame:[mainView bounds]];
