@@ -37,25 +37,30 @@ func (w *Window) SetNativeElements(ne *native.Native) {
 type SidebarController struct {
 	w             *Window
 	modelProvider native.SidebarModelProvider
-	items         map[int]native.SidebarItem
-	groups        map[int]native.SidebarGroup
+	items         map[int]*native.SidebarItem
+	groups        map[int]*native.SidebarGroup
+	itemToGroup   map[int]int
 }
 
 func (s *SidebarController) Refresh() {
 	if s.modelProvider != nil && s.w != nil {
 		sbModelRefreshLock.Lock()
 		defer sbModelRefreshLock.Unlock()
-		s.items = make(map[int]native.SidebarItem)
-		s.groups = make(map[int]native.SidebarGroup)
+		clear(s.items)
+		clear(s.groups)
+		clear(s.itemToGroup)
 		sidebarItemIdCounter = -1
 		model := CreateSidebarModel(
 			s.modelProvider(),
-			func(item native.SidebarItem) int {
+			func(item *native.SidebarItem, groupId int) int {
 				sidebarItemIdCounter++
 				s.items[sidebarItemIdCounter] = item
+				if groupId >= 0 {
+					s.itemToGroup[sidebarItemIdCounter] = groupId
+				}
 				return sidebarItemIdCounter
 			},
-			func(group native.SidebarGroup) int {
+			func(group *native.SidebarGroup) int {
 				sidebarItemIdCounter++
 				s.groups[sidebarItemIdCounter] = group
 				return sidebarItemIdCounter
@@ -81,8 +86,19 @@ func (s *SidebarController) Collapse() {
 }
 
 func (s *SidebarController) itemSelected(itemId int) {
-	if _, found := s.items[itemId]; found {
-		// FIXME: s.items is always nil... Why?
+	if s.w == nil || s.w.nativeSidebar == nil || s.w.nativeSidebar.OnItemSelected == nil {
+		return
+	}
+	if item, found := s.items[itemId]; found {
+		var group *native.SidebarGroup
+		if groupId, ok := s.itemToGroup[itemId]; ok {
+			group = s.groups[groupId]
+		}
+		evt := native.SidebarItemSelectEvent{
+			Item:  item,
+			Group: group,
+		}
+		s.w.nativeSidebar.OnItemSelected(evt)
 	}
 }
 
@@ -108,6 +124,9 @@ func getSidebarController(w *Window) SidebarController {
 			sidebarController = SidebarController{
 				w: w,
 			}
+			sidebarController.items = make(map[int]*native.SidebarItem)
+			sidebarController.groups = make(map[int]*native.SidebarGroup)
+			sidebarController.itemToGroup = make(map[int]int)
 			go sidebarController.startSidebarItemSelectedProcessor()
 			SetSidebarCallbacks(w.context)
 		},

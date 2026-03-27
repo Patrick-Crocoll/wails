@@ -31,7 +31,8 @@ type SidebarModel struct {
 type SidebarModelProvider func() SidebarModel
 
 type SidebarItemSelectEvent struct {
-	Item *SidebarItem
+	Item  *SidebarItem
+	Group *SidebarGroup
 }
 
 type SidebarGroupToggleEvent struct {

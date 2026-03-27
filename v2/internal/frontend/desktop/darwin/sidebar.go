@@ -123,8 +123,9 @@ func (m *SidebarModel) addItem(item native.SidebarItem, itemId int) {
 // CreateSidebarModel builds a WailsSidebarModel from native.Sidebar.
 // Call release() on the result when done.
 func CreateSidebarModel(
-	sidebar native.SidebarModel, itemIdProvider func(native.SidebarItem) int,
-	groupIdProvider func(native.SidebarGroup) int,
+	sidebar native.SidebarModel,
+	itemIdProvider func(*native.SidebarItem, int) int,
+	groupIdProvider func(*native.SidebarGroup) int,
 ) *SidebarModel {
 	model := newSidebarModel()
 	// Sort and add ungrouped items
@@ -134,7 +135,7 @@ func CreateSidebarModel(
 		},
 	)
 	for _, elem := range sidebar.SidebarItems {
-		model.addUngroupedItem(elem.Value, itemIdProvider(elem.Value))
+		model.addUngroupedItem(elem.Value, itemIdProvider(&elem.Value, -1))
 	}
 	// Sort and add groups with their items
 	sort.Slice(
@@ -144,9 +145,10 @@ func CreateSidebarModel(
 	)
 	for _, gelem := range sidebar.SidebarGroups {
 		group := gelem.Value
-		model.addGroup(group, groupIdProvider(group))
+		groupId := groupIdProvider(&group)
+		model.addGroup(group, groupId)
 		for _, item := range group.Items {
-			model.addItem(item, itemIdProvider(item))
+			model.addItem(item, itemIdProvider(&item, groupId))
 		}
 	}
 	return model
