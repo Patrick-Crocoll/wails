@@ -123,6 +123,12 @@ func NewWindow(frontendOptions *options.App, debug bool, devtools bool) *Window 
 
 		appearance = c.String(string(mac.Appearance))
 	}
+
+	withNativeSidebar := C.bool(false)
+	if frontendOptions.Native != nil && frontendOptions.Native.Sidebar != nil {
+		withNativeSidebar = C.bool(true)
+	}
+
 	var context *C.WailsContext = C.Create(
 		title, width, height, frameless, resizable, zoomable, fullscreen, fullSizeContent,
 		hideTitleBar, titlebarAppearsTransparent, hideTitle, useToolbar, hideToolbarSeparator, webviewIsTransparent,
@@ -130,6 +136,7 @@ func NewWindow(frontendOptions *options.App, debug bool, devtools bool) *Window 
 		defaultContextMenuEnabled,
 		windowStartState, startsHidden, minWidth, minHeight, maxWidth, maxHeight, enableFraudulentWebsiteWarnings,
 		preferences, singleInstanceEnabled, singleInstanceUniqueId, enableDragAndDrop, disableWebViewDragAndDrop,
+		withNativeSidebar,
 	)
 
 	// Create menu

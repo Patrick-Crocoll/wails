@@ -146,7 +146,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     return NO;
 }
 
-- (void) CreateWindow:(int)width :(int)height :(bool)frameless :(bool)resizable :(bool)zoomable :(bool)fullscreen :(bool)fullSizeContent :(bool)hideTitleBar :(bool)titlebarAppearsTransparent :(bool)hideTitle :(bool)useToolbar :(bool)hideToolbarSeparator :(bool)webviewIsTransparent :(bool)hideWindowOnClose :(NSString*)appearance :(bool)windowIsTranslucent :(int)minWidth :(int)minHeight :(int)maxWidth :(int)maxHeight :(bool)fraudulentWebsiteWarningEnabled :(struct Preferences)preferences :(bool)enableDragAndDrop :(bool)disableWebViewDragAndDrop  {
+- (void) CreateWindow:(int)width :(int)height :(bool)frameless :(bool)resizable :(bool)zoomable :(bool)fullscreen :(bool)fullSizeContent :(bool)hideTitleBar :(bool)titlebarAppearsTransparent :(bool)hideTitle :(bool)useToolbar :(bool)hideToolbarSeparator :(bool)webviewIsTransparent :(bool)hideWindowOnClose :(NSString*)appearance :(bool)windowIsTranslucent :(int)minWidth :(int)minHeight :(int)maxWidth :(int)maxHeight :(bool)fraudulentWebsiteWarningEnabled :(struct Preferences)preferences :(bool)enableDragAndDrop :(bool)disableWebViewDragAndDrop :(bool)withNativeSidebar {
     NSWindowStyleMask styleMask = 0;
 
     if( !frameless ) {
@@ -286,27 +286,29 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     CGRect init = { 0,0,0,0 };
     [self.webview initWithFrame:init configuration:config];
     // TODO #PMC Experimental changes: adding native sidebar START
-    NSRect contentViewBounds = [contentView bounds];
-
-    NSSplitView *splitView = [[NSSplitView alloc] initWithFrame:contentViewBounds];
-    [splitView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    [splitView setVertical:YES];
-    [splitView setDividerStyle:NSSplitViewDividerStyleThin];
-
-    self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
-
-    NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
-    [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-
-    [self.webview setFrame:[mainView bounds]];
-    [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    [mainView addSubview:self.webview];
-
-    [splitView addSubview:self.sidebar];
-    [splitView addSubview:mainView];
-    [splitView adjustSubviews];
-
-    [contentView addSubview:splitView];
+    if (withNativeSidebar) {
+        NSRect contentViewBounds = [contentView bounds];
+        NSSplitView *splitView = [[NSSplitView alloc] initWithFrame:contentViewBounds];
+        [splitView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        [splitView setVertical:YES];
+        [splitView setDividerStyle:NSSplitViewDividerStyleThin];
+        self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
+        NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
+        [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        [self.webview setFrame:[mainView bounds]];
+        [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        [mainView addSubview:self.webview];
+        [splitView addSubview:self.sidebar];
+        [splitView addSubview:mainView];
+        [splitView adjustSubviews];
+        [contentView addSubview:splitView];
+    } else {
+    // TODO #PMC Experimental changes: adding native sidebar END
+        [contentView addSubview:self.webview];
+        [self.webview setAutoresizingMask: NSViewWidthSizable|NSViewHeightSizable];
+        CGRect contentViewBounds = [contentView bounds];
+        [self.webview setFrame:contentViewBounds];
+    }
 
     if (webviewIsTransparent) {
         [self.webview setValue:[NSNumber numberWithBool:!webviewIsTransparent] forKey:@"drawsBackground"];
@@ -314,8 +316,6 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
 
     [self.webview setNavigationDelegate:self];
     self.webview.UIDelegate = self;
-
-    // TODO #PMC Experimental changes: adding native sidebar END
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     [defaults setBool:FALSE forKey:@"NSAutomaticQuoteSubstitutionEnabled"];
