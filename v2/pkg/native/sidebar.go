@@ -13,6 +13,8 @@ type Sidebar struct {
 	// description of the native sidebar
 
 	ModelProvider SidebarModelProvider
+	WidthPixels   int
+	IsExpanded    bool
 
 	// callbacks from the sidebar
 
@@ -24,8 +26,6 @@ type Sidebar struct {
 type SidebarModel struct {
 	SidebarGroups []SidebarElement[SidebarGroup]
 	SidebarItems  []SidebarElement[SidebarItem]
-	WidthPixels   int
-	IsExpanded    bool
 }
 
 type SidebarModelProvider func() SidebarModel

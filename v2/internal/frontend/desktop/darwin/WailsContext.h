@@ -60,7 +60,8 @@
 @property (retain) NSImage* aboutImage;
 @property (retain) NSString* aboutTitle;
 @property (retain) NSString* aboutDescription;
-@property (retain) WailsSidebarView* sidebar;
+@property (retain) NSSplitView *splitView; // #Native: sidebar
+@property (retain) WailsSidebarView* sidebar; // #Native: sidebar
 
 struct Preferences {
   bool *tabFocusesLinks;

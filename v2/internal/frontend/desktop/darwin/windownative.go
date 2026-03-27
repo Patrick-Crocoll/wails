@@ -116,6 +116,7 @@ func (w *Window) setupSidebar(sidebar *native.Sidebar) {
 	sbc := getSidebarController(w)
 	sbc.modelProvider = sidebar.ModelProvider
 	sbc.Refresh()
+	SetSidebarWidth(w.context, sidebar.WidthPixels)
 }
 
 func getSidebarController(w *Window) SidebarController {

@@ -63,6 +63,16 @@ void SetSidebarModel(void* ctx, void* modelPtr) {
     [context.sidebar reloadData];  // Refresh after setting model
 }
 
+void SetSidebarWidth(void* ctx, int width) {
+    if (width < 0) {
+        return;
+    }
+    WailsContext* context = (WailsContext*)ctx;
+    if (context.splitView != nil) {
+        [context.splitView setPosition:width ofDividerAtIndex:0];
+    }
+}
+
 void ReleaseSidebarModel(void* ptr) {
     [(id)ptr release];
 }
@@ -161,4 +171,8 @@ func SetContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
 	// to decrease the reference counter. Now we are not the owners of the model anymore.
 	// When we want the sidebar to change, we have to create a new model.
 	C.ReleaseSidebarModel(model.ptr)
+}
+
+func SetSidebarWidth(context unsafe.Pointer, width int) {
+	C.SetSidebarWidth(context, C.int(width))
 }

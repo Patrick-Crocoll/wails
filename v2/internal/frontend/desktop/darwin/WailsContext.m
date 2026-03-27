@@ -119,6 +119,8 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.mouseEvent release];
     [self.userContentController release];
     [self.applicationMenu release];
+    [self.splitView release]; // #Native: sidebar
+    [self.sidebar release]; // #Native: sidebar
     [super dealloc];
 }
 
@@ -285,30 +287,34 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
 
     CGRect init = { 0,0,0,0 };
     [self.webview initWithFrame:init configuration:config];
-    // TODO #PMC Experimental changes: adding native sidebar START
+    // #Native: sidebar START
     if (withNativeSidebar) {
         NSRect contentViewBounds = [contentView bounds];
-        NSSplitView *splitView = [[NSSplitView alloc] initWithFrame:contentViewBounds];
-        [splitView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-        [splitView setVertical:YES];
-        [splitView setDividerStyle:NSSplitViewDividerStyleThin];
+        _splitView = [[NSSplitView alloc] initWithFrame:contentViewBounds];
+        [_splitView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        [_splitView setVertical:YES];
+        [_splitView setDividerStyle:NSSplitViewDividerStyleThin];
         self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
+        // FIXME: put this call to somewhere it can be called from go-code
+        [_splitView setPosition:800 ofDividerAtIndex:0];
         NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
         [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
         [self.webview setFrame:[mainView bounds]];
         [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
         [mainView addSubview:self.webview];
-        [splitView addSubview:self.sidebar];
-        [splitView addSubview:mainView];
-        [splitView adjustSubviews];
-        [contentView addSubview:splitView];
+        [_splitView addSubview:self.sidebar];
+        [_splitView addSubview:mainView];
+        [_splitView adjustSubviews];
+        [contentView addSubview:_splitView];
     } else {
-    // TODO #PMC Experimental changes: adding native sidebar END
+    // #Native: sidebar END
         [contentView addSubview:self.webview];
         [self.webview setAutoresizingMask: NSViewWidthSizable|NSViewHeightSizable];
         CGRect contentViewBounds = [contentView bounds];
         [self.webview setFrame:contentViewBounds];
+    // #Native: sidebar START
     }
+    // #Native: sidebar END
 
     if (webviewIsTransparent) {
         [self.webview setValue:[NSNumber numberWithBool:!webviewIsTransparent] forKey:@"drawsBackground"];
