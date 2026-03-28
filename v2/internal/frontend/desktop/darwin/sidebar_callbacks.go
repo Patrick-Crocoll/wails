@@ -26,3 +26,8 @@ func GoSidebarGroupToggled(groupId C.int, groupState C.int) {
 		collapsed: int(groupState) == 0,
 	}
 }
+
+//export GoSidebarWidthChanged
+func GoSidebarWidthChanged(width C.int) {
+	sidebarWidthChangedBuffer <- int(width)
+}

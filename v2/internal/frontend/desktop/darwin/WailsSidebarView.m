@@ -500,7 +500,9 @@
     NSImage *resolvedImage = node.icon;
     [imageView setImage:resolvedImage];
     if (node.color != nil) {
-        if (@available(macOS 10.14, *)) {
+        if (@available
+        (macOS
+        10.14, *)) {
             if ([imageView respondsToSelector:@selector(setContentTintColor:)]) {
                 [imageView setContentTintColor:node.color];
             }
@@ -568,25 +570,26 @@
 @synthesize contentView;
 
 - (instancetype)initWithFrame:(NSRect)frameRect sidebar:(WailsSidebarView *)sidebar mainView:(NSView *)mainView {
-    self.vertical = YES;
-    self.dividerStyle = NSSplitViewDividerStyleThin;
-    self.delegate = self;
-    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-
-    self.sidebarView = sidebar;
-    self.contentView = mainView;
-    /*
-    // set the main view (right side)
-    self.contentView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, frameRect.size.width - 220, frameRect.size.height)];
-    [self.contentView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    [mainView setFrame:[self.contentView bounds]];
-    [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    [self.contentView addSubview:mainView];
-    // set the sidebar (left side)
-     */
-    //[self addSubview:self.sidebarView];
-    //[self addSubview:self.contentView];
-    //[self adjustSubviews];
+    self = [super initWithFrame:frameRect];
+    if (self) {
+        self.vertical = YES;
+        self.dividerStyle = NSSplitViewDividerStyleThin;
+        self.delegate = self;
+        self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        // (1) the sidebar view
+        self.sidebarView = sidebar;
+        // (2) the main view, probably the web view, created by Wails
+        self.contentView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, frameRect.size.width - 220,
+                                                                    frameRect.size.height)];
+        [self.contentView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        [mainView setFrame:[self.contentView bounds]];
+        [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        [self.contentView addSubview:mainView];
+        // (3) set up the split view
+        [self addSubview:self.sidebarView];
+        [self addSubview:self.contentView];
+        [self adjustSubviews];
+    }
     return self;
 }
 
@@ -597,11 +600,39 @@
     [super dealloc];
 }
 
+- (void)expandSidebar:(CGFloat)width {
+    [self setSidebarExpandedWidth:width animated:YES];
+}
+
+- (void)collapseSidebar {
+    // Use a tiny width instead of 0 to avoid edge-case layout issues.
+    [self setSidebarExpandedWidth:1.0 animated:YES];
+}
+
+
+- (void)setSidebarExpandedWidth:(CGFloat)width animated:(BOOL)animated {
+    if (width < 0.0) {
+        width = 0.0;
+    }
+    // Divider index 0 is the one between sidebar and content.
+    // The position is the width of the left pane.
+    CGFloat targetWidth = width;
+    if (animated) {
+        [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+            context.duration = 0.22;
+            [[self animator] setPosition:targetWidth ofDividerAtIndex:0];
+        } completionHandler:nil];
+    } else {
+        [self setPosition:targetWidth ofDividerAtIndex:0];
+        [self adjustSubviews];
+    }
+}
+
 - (void)splitViewDidResizeSubviews:(NSNotification *)notification {
     if (self.onWidthChanged == nil || self.sidebarView == nil) {
         return;
     }
-    self.onWidthChanged((int)NSWidth(self.sidebarView.frame));
+    self.onWidthChanged((int) NSWidth(self.sidebarView.frame));
 }
 
 @end

@@ -24,6 +24,7 @@ type SidebarGroupToggleState struct {
 var (
 	sidebarItemSelectBuffer       = make(chan int, 10)
 	sidebarGroupToggleStateBuffer = make(chan SidebarGroupToggleState, 10)
+	sidebarWidthChangedBuffer     = make(chan int, 10)
 )
 
 func (w *Window) SetNativeElements(ne *native.Native) {
@@ -36,6 +37,7 @@ func (w *Window) SetNativeElements(ne *native.Native) {
 
 type SidebarController struct {
 	w             *Window
+	savedWidth    int
 	modelProvider native.SidebarModelProvider
 	items         map[int]*native.SidebarItem
 	groups        map[int]*native.SidebarGroup
@@ -71,18 +73,21 @@ func (s *SidebarController) Refresh() {
 }
 
 func (s *SidebarController) SetWidth(width int) {
-	//TODO implement me
-	panic("implement me")
+	if s.w != nil && s.w.context != nil {
+		SetSidebarWidth(s.w.context, width)
+	}
 }
 
 func (s *SidebarController) Expand() {
-	//TODO implement me
-	panic("implement me")
+	if s.w != nil && s.w.context != nil {
+		ExpandSidebar(s.w.context, s.savedWidth)
+	}
 }
 
 func (s *SidebarController) Collapse() {
-	//TODO implement me
-	panic("implement me")
+	if s.w != nil && s.w.context != nil {
+		CollapseSidebar(s.w.context)
+	}
 }
 
 func (s *SidebarController) itemSelected(itemId int) {
@@ -108,6 +113,15 @@ func (s *SidebarController) startSidebarItemSelectedProcessor() {
 	}
 }
 
+func (s *SidebarController) startSidebarWidthChangedProcessor() {
+	for width := range sidebarWidthChangedBuffer {
+		if s.w == nil || s.w.nativeSidebar == nil || s.w.nativeSidebar.OnWidthChanged == nil {
+			continue
+		}
+		s.w.nativeSidebar.OnWidthChanged(width)
+	}
+}
+
 func (w *Window) setupSidebar(sidebar *native.Sidebar) {
 	if sidebar == nil || sidebar.ModelProvider == nil {
 		return
@@ -117,13 +131,18 @@ func (w *Window) setupSidebar(sidebar *native.Sidebar) {
 	sbc.modelProvider = sidebar.ModelProvider
 	sbc.Refresh()
 	SetSidebarWidth(w.context, sidebar.WidthPixels)
+
+	if sidebar.OnControlReady != nil {
+		sidebar.OnControlReady(&sbc)
+	}
 }
 
 func getSidebarController(w *Window) SidebarController {
 	initSBCOnce.Do(
 		func() {
 			sidebarController = SidebarController{
-				w: w,
+				w:          w,
+				savedWidth: -1,
 			}
 			sidebarController.items = make(map[int]*native.SidebarItem)
 			sidebarController.groups = make(map[int]*native.SidebarGroup)

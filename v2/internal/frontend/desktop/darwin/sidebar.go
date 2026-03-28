@@ -20,6 +20,7 @@ import (
 
 extern void GoSidebarItemSelected(int itemId);
 extern void GoSidebarGroupToggled(int groupId, int groupState);
+extern void GoSidebarWidthChanged(int width);
 
 // C wrappers for Objective-C methods
 void* NewSidebarModel(void) {
@@ -28,10 +29,21 @@ void* NewSidebarModel(void) {
 
 void SetSidebarCallbacks(void* ctx) {
     WailsContext* context = (WailsContext*)ctx;
-    context.sidebar.onItemSelected = ^(int itemId) {
+    if (context.sidebarContainer == nil) {
+        // TODO: log?
+        return;
+    }
+    context.sidebarContainer.onWidthChanged = ^(int width) {
+        GoSidebarWidthChanged(width);
+    };
+    if (context.sidebarContainer.sidebarView == nil) {
+        // TODO: log?
+        return;
+    }
+    context.sidebarContainer.sidebarView.onItemSelected = ^(int itemId) {
         GoSidebarItemSelected(itemId);
     };
-    context.sidebar.onGroupToggled = ^(int groupId, int groupState) {
+    context.sidebarContainer.sidebarView.onGroupToggled = ^(int groupId, int groupState) {
         GoSidebarGroupToggled(groupId, groupState);
     };
 }
@@ -59,8 +71,12 @@ void SidebarModelAddItem(void* ptr, char* label, char* icon, int itemId) {
 void SetSidebarModel(void* ctx, void* modelPtr) {
     WailsContext* context = (WailsContext*)ctx;
     WailsSidebarDataSource* model = (WailsSidebarDataSource*)modelPtr;
-    [context.sidebar setModel:model];
-    [context.sidebar reloadData];  // Refresh after setting model
+    if (context.sidebarContainer == nil || context.sidebarContainer.sidebarView == nil) {
+        // TODO: log?
+        return;
+    }
+    [context.sidebarContainer.sidebarView setModel:model];
+    [context.sidebarContainer.sidebarView reloadData];  // Refresh after setting model
 }
 
 void SetSidebarWidth(void* ctx, int width) {
@@ -68,8 +84,25 @@ void SetSidebarWidth(void* ctx, int width) {
         return;
     }
     WailsContext* context = (WailsContext*)ctx;
-    if (context.splitView != nil) {
-        [context.splitView setPosition:width ofDividerAtIndex:0];
+    if (context.sidebarContainer != nil) {
+        [context.sidebarContainer setPosition:width ofDividerAtIndex:0];
+    }
+}
+
+void ExpandSidebar(void* ctx, int width) {
+    if (width < 0) {
+        width = 250; // set width to a reasonably width
+    }
+    WailsContext* context = (WailsContext*)ctx;
+    if (context.sidebarContainer != nil) {
+        [context.sidebarContainer expandSidebar:width];
+    }
+}
+
+void CollapseSidebar(void* ctx) {
+    WailsContext* context = (WailsContext*)ctx;
+    if (context.sidebarContainer != nil) {
+        [context.sidebarContainer collapseSidebar];
     }
 }
 
@@ -175,4 +208,12 @@ func SetContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
 
 func SetSidebarWidth(context unsafe.Pointer, width int) {
 	C.SetSidebarWidth(context, C.int(width))
+}
+
+func ExpandSidebar(context unsafe.Pointer, width int) {
+	C.ExpandSidebar(context, C.int(width))
+}
+
+func CollapseSidebar(context unsafe.Pointer) {
+	C.CollapseSidebar(context)
 }

@@ -119,8 +119,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.mouseEvent release];
     [self.userContentController release];
     [self.applicationMenu release];
-    [self.splitView release]; // #Native: sidebar
-    [self.sidebar release]; // #Native: sidebar
+    [self.sidebarContainer release]; // #Native: sidebar
     [super dealloc];
 }
 
@@ -289,28 +288,10 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.webview initWithFrame:init configuration:config];
     // #Native: sidebar START
     if (withNativeSidebar) {
-        /*
-         NSRect contentViewBounds = [contentView bounds];
-        self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
-        self.splitView = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:self.sidebar mainView:self.webview];
-        [contentView addSubview:self.splitView];
-         */
         NSRect contentViewBounds = [contentView bounds];
-        NSSplitView *test = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:self.sidebar mainView:self.webview];
-        _splitView = [[NSSplitView alloc] initWithFrame:contentViewBounds];
-        [_splitView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-        [_splitView setVertical:YES];
-        [_splitView setDividerStyle:NSSplitViewDividerStyleThin];
-        self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
-        NSView *mainView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, contentViewBounds.size.width - 220, contentViewBounds.size.height)];
-        [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-        [self.webview setFrame:[mainView bounds]];
-        [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-        [mainView addSubview:self.webview];
-        [_splitView addSubview:self.sidebar];
-        [_splitView addSubview:mainView];
-        [_splitView adjustSubviews];
-        [contentView addSubview:_splitView];
+        WailsSidebarView *sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
+        self.sidebarContainer = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:sidebar mainView:self.webview];
+        [contentView addSubview:self.sidebarContainer];
     } else {
     // #Native: sidebar END
         [contentView addSubview:self.webview];

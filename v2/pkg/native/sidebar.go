@@ -21,6 +21,7 @@ type Sidebar struct {
 	OnControlReady SidebarControlHandler
 	OnItemSelected SidebarItemSelectedHandler
 	OnGroupToggled SidebarGroupToggledHandler
+	OnWidthChanged SidebarWidthChangedHandler
 }
 
 type SidebarModel struct {
@@ -44,6 +45,7 @@ type SidebarControlHandler func(ctrl SidebarControl)
 
 type SidebarItemSelectedHandler func(evt SidebarItemSelectEvent)
 type SidebarGroupToggledHandler func(evt SidebarGroupToggleEvent)
+type SidebarWidthChangedHandler func(widthPixels int)
 
 // TODO: Do we have to return errors?
 

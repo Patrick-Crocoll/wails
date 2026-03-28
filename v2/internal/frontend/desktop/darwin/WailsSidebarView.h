@@ -38,6 +38,8 @@ typedef void (^WailsSidebarWidthChangedHandler)(int width);
 @property (nonatomic, copy) WailsSidebarWidthChangedHandler onWidthChanged;
 
 - (instancetype)initWithFrame:(NSRect)frameRect sidebar:(WailsSidebarView *)sidebar mainView:(NSView *)mainView;
+- (void)expandSidebar:(CGFloat)width;
+- (void)collapseSidebar;
 
 @end
 
