@@ -560,3 +560,48 @@
 }
 
 @end
+
+@implementation WailsSidebarViewContainer
+
+@synthesize onWidthChanged;
+@synthesize sidebarView;
+@synthesize contentView;
+
+- (instancetype)initWithFrame:(NSRect)frameRect sidebar:(WailsSidebarView *)sidebar mainView:(NSView *)mainView {
+    self.vertical = YES;
+    self.dividerStyle = NSSplitViewDividerStyleThin;
+    self.delegate = self;
+    self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+
+    self.sidebarView = sidebar;
+    self.contentView = mainView;
+    /*
+    // set the main view (right side)
+    self.contentView = [[NSView alloc] initWithFrame:NSMakeRect(220, 0, frameRect.size.width - 220, frameRect.size.height)];
+    [self.contentView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [mainView setFrame:[self.contentView bounds]];
+    [mainView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [self.contentView addSubview:mainView];
+    // set the sidebar (left side)
+     */
+    //[self addSubview:self.sidebarView];
+    //[self addSubview:self.contentView];
+    //[self adjustSubviews];
+    return self;
+}
+
+- (void)dealloc {
+    [sidebarView release];
+    [contentView release];
+    [onWidthChanged release];
+    [super dealloc];
+}
+
+- (void)splitViewDidResizeSubviews:(NSNotification *)notification {
+    if (self.onWidthChanged == nil || self.sidebarView == nil) {
+        return;
+    }
+    self.onWidthChanged((int)NSWidth(self.sidebarView.frame));
+}
+
+@end

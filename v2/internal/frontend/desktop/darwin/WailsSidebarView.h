@@ -6,6 +6,7 @@
 // declaration of the callbacks
 typedef void (^WailsSidebarSelectionChangedHandler)(int itemId);
 typedef void (^WailsSidebarGroupToggledHandler)(int groupId, int state);
+typedef void (^WailsSidebarWidthChangedHandler)(int width);
 
 // declaration of a data source
 @interface WailsSidebarDataSource : NSObject <NSOutlineViewDataSource>
@@ -26,6 +27,17 @@ typedef void (^WailsSidebarGroupToggledHandler)(int groupId, int state);
 
 - (instancetype)initWithFrame:(NSRect)frameRect model:(WailsSidebarDataSource *)model;
 - (void)reloadData;
+
+@end
+
+// The container that holds the sidebar (on the left) and the content view (on the right)
+@interface WailsSidebarViewContainer : NSSplitView <NSSplitViewDelegate>
+
+@property (nonatomic, retain) WailsSidebarView *sidebarView;
+@property (nonatomic, retain) NSView *contentView;
+@property (nonatomic, copy) WailsSidebarWidthChangedHandler onWidthChanged;
+
+- (instancetype)initWithFrame:(NSRect)frameRect sidebar:(WailsSidebarView *)sidebar mainView:(NSView *)mainView;
 
 @end
 

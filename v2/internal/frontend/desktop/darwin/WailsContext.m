@@ -289,7 +289,14 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.webview initWithFrame:init configuration:config];
     // #Native: sidebar START
     if (withNativeSidebar) {
+        /*
+         NSRect contentViewBounds = [contentView bounds];
+        self.sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
+        self.splitView = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:self.sidebar mainView:self.webview];
+        [contentView addSubview:self.splitView];
+         */
         NSRect contentViewBounds = [contentView bounds];
+        NSSplitView *test = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:self.sidebar mainView:self.webview];
         _splitView = [[NSSplitView alloc] initWithFrame:contentViewBounds];
         [_splitView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
         [_splitView setVertical:YES];
