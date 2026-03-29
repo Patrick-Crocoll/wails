@@ -107,9 +107,28 @@ func (s *SidebarController) itemSelected(itemId int) {
 	}
 }
 
+func (s *SidebarController) groupToggled(groupState SidebarGroupToggleState) {
+	if s.w == nil || s.w.nativeSidebar == nil || s.w.nativeSidebar.OnGroupToggled == nil {
+		return
+	}
+	if group, found := s.groups[groupState.groupId]; found {
+		evt := native.SidebarGroupToggleEvent{
+			Group:      group,
+			IsExpanded: !groupState.collapsed,
+		}
+		s.w.nativeSidebar.OnGroupToggled(evt)
+	}
+}
+
 func (s *SidebarController) startSidebarItemSelectedProcessor() {
 	for selectedItem := range sidebarItemSelectBuffer {
 		s.itemSelected(selectedItem)
+	}
+}
+
+func (s *SidebarController) startGroupToggledProcessor() {
+	for groupState := range sidebarGroupToggleStateBuffer {
+		s.groupToggled(groupState)
 	}
 }
 
