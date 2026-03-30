@@ -5,6 +5,7 @@ package darwin
 
 import (
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/native"
 )
@@ -14,6 +15,8 @@ var (
 	initSBCOnce          sync.Once
 	sbModelRefreshLock   sync.Mutex
 	sidebarItemIdCounter int
+	sidebarInitialized   bool
+	sbWidthLock          sync.Mutex
 )
 
 type SidebarGroupToggleState struct {
@@ -38,6 +41,9 @@ func (w *Window) SetNativeElements(ne *native.Native) {
 type SidebarController struct {
 	w             *Window
 	savedWidth    int
+	currentWidth  int
+	collapsed     bool
+	selectedItem  int
 	modelProvider native.SidebarModelProvider
 	items         map[int]*native.SidebarItem
 	groups        map[int]*native.SidebarGroup
@@ -74,18 +80,28 @@ func (s *SidebarController) Refresh() {
 
 func (s *SidebarController) SetWidth(width int) {
 	if s.w != nil && s.w.context != nil {
+		sbWidthLock.Lock()
+		defer sbWidthLock.Unlock()
 		SetSidebarWidth(s.w.context, width)
+		s.currentWidth = width
 	}
 }
 
 func (s *SidebarController) Expand() {
 	if s.w != nil && s.w.context != nil {
-		ExpandSidebar(s.w.context, s.savedWidth)
+		s.collapsed = false
+		width := s.savedWidth
+		if width <= 1 {
+			// In this case we set it to -1, which lets the underlying implementation decide a reasonable width
+			width = -1
+		}
+		ExpandSidebar(s.w.context, width)
 	}
 }
 
 func (s *SidebarController) Collapse() {
 	if s.w != nil && s.w.context != nil {
+		s.collapsed = true
 		CollapseSidebar(s.w.context)
 	}
 }
@@ -94,6 +110,10 @@ func (s *SidebarController) itemSelected(itemId int) {
 	if s.w == nil || s.w.nativeSidebar == nil || s.w.nativeSidebar.OnItemSelected == nil {
 		return
 	}
+	if itemId == s.selectedItem {
+		return
+	}
+	s.selectedItem = itemId
 	if item, found := s.items[itemId]; found {
 		var group *native.SidebarGroup
 		if groupId, ok := s.itemToGroup[itemId]; ok {
@@ -133,11 +153,27 @@ func (s *SidebarController) startGroupToggledProcessor() {
 }
 
 func (s *SidebarController) startSidebarWidthChangedProcessor() {
-	for width := range sidebarWidthChangedBuffer {
-		if s.w == nil || s.w.nativeSidebar == nil || s.w.nativeSidebar.OnWidthChanged == nil {
-			continue
+	const timeout = 500 * time.Millisecond
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	for {
+		select {
+		case <-timer.C:
+			if s.w != nil && s.w.nativeSidebar != nil && s.w.nativeSidebar.OnWidthChanged != nil {
+				if s.savedWidth != s.currentWidth {
+					sbWidthLock.Lock()
+					s.w.nativeSidebar.OnWidthChanged(s.currentWidth)
+					if !s.collapsed {
+						s.savedWidth = s.currentWidth
+					}
+					sbWidthLock.Unlock()
+				}
+			}
+		case width := <-sidebarWidthChangedBuffer:
+			s.currentWidth = width
+			// This should be fine for go > 1.23. Might cause issues with older versions of go!
+			timer.Reset(timeout)
 		}
-		s.w.nativeSidebar.OnWidthChanged(width)
 	}
 }
 
@@ -149,8 +185,7 @@ func (w *Window) setupSidebar(sidebar *native.Sidebar) {
 	sbc := getSidebarController(w)
 	sbc.modelProvider = sidebar.ModelProvider
 	sbc.Refresh()
-	SetSidebarWidth(w.context, sidebar.WidthPixels)
-
+	sbc.SetWidth(sidebar.WidthPixels)
 	if sidebar.OnControlReady != nil {
 		sidebar.OnControlReady(&sbc)
 	}
@@ -160,14 +195,18 @@ func getSidebarController(w *Window) SidebarController {
 	initSBCOnce.Do(
 		func() {
 			sidebarController = SidebarController{
-				w:          w,
-				savedWidth: -1,
+				w:            w,
+				savedWidth:   -1,
+				selectedItem: -1,
 			}
 			sidebarController.items = make(map[int]*native.SidebarItem)
 			sidebarController.groups = make(map[int]*native.SidebarGroup)
 			sidebarController.itemToGroup = make(map[int]int)
 			go sidebarController.startSidebarItemSelectedProcessor()
+			go sidebarController.startSidebarWidthChangedProcessor()
+			go sidebarController.startGroupToggledProcessor()
 			SetSidebarCallbacks(w.context)
+			sidebarInitialized = true
 		},
 	)
 	return sidebarController

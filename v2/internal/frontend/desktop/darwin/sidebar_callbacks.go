@@ -16,18 +16,39 @@ import "C"
 
 //export GoSidebarItemSelected
 func GoSidebarItemSelected(itemId C.int) {
-	sidebarItemSelectBuffer <- int(itemId)
+	if !sidebarInitialized {
+		return
+	}
+	select {
+	case sidebarItemSelectBuffer <- int(itemId):
+	default:
+		// IMPORTANT: drop event if nobody is draining fast enough, otherwise the UI can lock up completely
+	}
 }
 
 //export GoSidebarGroupToggled
 func GoSidebarGroupToggled(groupId C.int, groupState C.int) {
-	sidebarGroupToggleStateBuffer <- SidebarGroupToggleState{
+	if !sidebarInitialized {
+		return
+	}
+	select {
+	case sidebarGroupToggleStateBuffer <- SidebarGroupToggleState{
 		groupId:   int(groupId),
 		collapsed: int(groupState) == 0,
+	}:
+	default:
+		// IMPORTANT: drop event if nobody is draining fast enough, otherwise the UI can lock up completely
 	}
 }
 
 //export GoSidebarWidthChanged
 func GoSidebarWidthChanged(width C.int) {
-	sidebarWidthChangedBuffer <- int(width)
+	if !sidebarInitialized {
+		return
+	}
+	select {
+	case sidebarWidthChangedBuffer <- int(width):
+	default:
+		// IMPORTANT: drop event if nobody is draining fast enough, otherwise the UI can lock up completely
+	}
 }
