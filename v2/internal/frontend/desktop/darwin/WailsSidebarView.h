@@ -11,6 +11,8 @@ typedef void (^WailsSidebarWidthChangedHandler)(int width);
 // declaration of a data source
 @interface WailsSidebarDataSource : NSObject <NSOutlineViewDataSource>
 
+@property(nonatomic, assign) int selectedItemId;
+
 - (void)addUngroupedItemWithLabel:(NSString *)label iconName:(NSString *)iconName itemId:(int)itemId;
 - (void)addGroupWithTitle:(NSString *)title initiallyExpanded:(BOOL)expanded groupId:(int)groupId;
 // Adds to the last group

@@ -99,11 +99,13 @@
 @implementation WailsSidebarDataSource
 
 @synthesize rootNodes;
+@synthesize selectedItemId;
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         self->rootNodes = [[NSMutableArray alloc] init];
+        self.selectedItemId = -1;
     }
     return self;
 }
@@ -113,9 +115,34 @@
     [super dealloc];
 }
 
-- (NSArray
+- (WailsSidebarNode *) selectedItem {
+    if (self.selectedItemId == -1) {
+        return nil;
+    }
+    id foundItem = nil;
+    for (WailsSidebarNode *rootNode in self.rootNodes) {
+        if ([rootNode isKindOfClass:[WailsSidebarItemNode class]]) {
+            if (rootNode.id == self.selectedItemId) {
+                foundItem = rootNode;
+                break;
+            }
+        } else if ([rootNode isKindOfClass:[WailsSidebarGroupNode class]]) {
+            WailsSidebarGroupNode *group = (WailsSidebarGroupNode *) rootNode;
+            for (WailsSidebarNode *child in group.children) {
+                if (child.id == self.selectedItemId) {
+                    foundItem = child;
+                    break;
+                }
+            }
+            if (foundItem != nil) {
+                break;
+            }
+        }
+    }
+    return foundItem;
+}
 
-<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded {
+- (NSArray<WailsSidebarNode *> *)nodesMatchingExpansionState:(BOOL)shouldBeExpanded {
     NSMutableArray < WailsSidebarNode * > *nodes = [NSMutableArray array];
     if ([self.rootNodes count] == 0) {
         return nodes;
@@ -135,15 +162,11 @@
     return nodes;
 }
 
-- (NSArray
-
-<WailsSidebarNode *> *)expandedNodes {
+- (NSArray <WailsSidebarNode *> *)expandedNodes {
     return [self nodesMatchingExpansionState:YES];
 }
 
-- (NSArray
-
-<WailsSidebarNode *> *)collapsedNodes {
+- (NSArray <WailsSidebarNode *> *)collapsedNodes {
     return [self nodesMatchingExpansionState:NO];
 }
 
@@ -439,6 +462,20 @@
 - (void)reloadData {
     [self.outlineView reloadData];
     [self expandNodes];
+    // See if we have to select an item
+    if (self.model != nil) {
+        id foundItem = [self.model selectedItem];
+        if (foundItem == nil) {
+            return;
+        }
+        NSInteger row = [self.outlineView rowForItem:foundItem];
+        if (row < 0) {
+            return;
+        }
+        [self.outlineView selectRowIndexes:[NSIndexSet indexSetWithIndex:(NSUInteger)row]
+                      byExtendingSelection:NO];
+        [self.outlineView scrollRowToVisible:row];
+    }
 }
 
 - (void)expandNodes {

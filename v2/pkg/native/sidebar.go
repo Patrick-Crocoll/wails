@@ -27,6 +27,7 @@ type Sidebar struct {
 type SidebarModel struct {
 	SidebarGroups []SidebarElement[SidebarGroup]
 	SidebarItems  []SidebarElement[SidebarItem]
+	SelectedItem  *SidebarItem // If given, this item will initially be selected
 }
 
 type SidebarModelProvider func() SidebarModel

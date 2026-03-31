@@ -68,6 +68,11 @@ void SidebarModelAddItem(void* ptr, char* label, char* icon, int itemId) {
     [model addItemWithLabel:nsLabel iconName:nsIcon itemId:itemId];
 }
 
+void SidebarModelSetSelectedItem(void* ptr, int itemId) {
+    WailsSidebarDataSource* model = (WailsSidebarDataSource*)ptr;
+    [model setSelectedItemId:itemId];
+}
+
 void SetSidebarModel(void* ctx, void* modelPtr) {
     WailsContext* context = (WailsContext*)ctx;
     WailsSidebarDataSource* model = (WailsSidebarDataSource*)modelPtr;
@@ -131,13 +136,21 @@ func newSidebarModel() *SidebarModel {
 	return &SidebarModel{ptr: ptr}
 }
 
-func (m *SidebarModel) addUngroupedItem(item native.SidebarItem, itemId int) {
+func (m *SidebarModel) addItem(item native.SidebarItem, selectedItem *native.SidebarItem, itemId int, isGrouped bool) {
 	cLabel := C.CString(item.Name)
 	var cIcon *C.char
 	if item.Icon != nil {
 		cIcon = C.CString(*item.Icon)
 	}
-	C.SidebarModelAddUngroupedItem(m.ptr, cLabel, cIcon, C.int(itemId))
+	itemPtr := &item
+	if itemPtr == selectedItem {
+		C.SidebarModelSetSelectedItem(m.ptr, C.int(itemId))
+	}
+	if isGrouped {
+		C.SidebarModelAddItem(m.ptr, cLabel, cIcon, C.int(itemId))
+	} else {
+		C.SidebarModelAddUngroupedItem(m.ptr, cLabel, cIcon, C.int(itemId))
+	}
 	C.free(unsafe.Pointer(cLabel))
 	if cIcon != nil {
 		C.free(unsafe.Pointer(cIcon))
@@ -156,17 +169,8 @@ func (m *SidebarModel) addGroup(group native.SidebarGroup, groupId int) {
 	C.free(unsafe.Pointer(cTitle))
 }
 
-func (m *SidebarModel) addItem(item native.SidebarItem, itemId int) {
-	cLabel := C.CString(item.Name)
-	var cIcon *C.char
-	if item.Icon != nil {
-		cIcon = C.CString(*item.Icon)
-	}
-	C.SidebarModelAddItem(m.ptr, cLabel, cIcon, C.int(itemId))
-	C.free(unsafe.Pointer(cLabel))
-	if cIcon != nil {
-		C.free(unsafe.Pointer(cIcon))
-	}
+func (m *SidebarModel) setSelectedItem(itemId int) {
+	C.SidebarModelSetSelectedItem(m.ptr, C.int(itemId))
 }
 
 // CreateSidebarModel builds a WailsSidebarModel from native.Sidebar.
@@ -184,7 +188,7 @@ func CreateSidebarModel(
 		},
 	)
 	for _, elem := range sidebar.SidebarItems {
-		model.addUngroupedItem(elem.Value, itemIdProvider(&elem.Value, -1))
+		model.addItem(elem.Value, sidebar.SelectedItem, itemIdProvider(&elem.Value, -1), false)
 	}
 	// Sort and add groups with their items
 	sort.Slice(
@@ -197,7 +201,7 @@ func CreateSidebarModel(
 		groupId := groupIdProvider(&group)
 		model.addGroup(group, groupId)
 		for _, item := range group.Items {
-			model.addItem(item, itemIdProvider(&item, groupId))
+			model.addItem(item, sidebar.SelectedItem, itemIdProvider(&item, groupId), true)
 		}
 	}
 	return model
