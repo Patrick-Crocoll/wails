@@ -83,27 +83,33 @@ void SetSidebarWidth(void* ctx, int width) {
     if (width < 0) {
         return;
     }
-    WailsContext* context = (WailsContext*)ctx;
-    if (context.sidebarContainer != nil) {
-        [context.sidebarContainer setPosition:width ofDividerAtIndex:0];
-    }
+    ON_MAIN_THREAD({
+        WailsContext* context = (WailsContext*)ctx;
+        if (context.sidebarContainer != nil) {
+            [context.sidebarContainer setPosition:width ofDividerAtIndex:0];
+        }
+    });
 }
 
 void ExpandSidebar(void* ctx, int width) {
     if (width < 0) {
         width = 250; // set width to a reasonably width
     }
-    WailsContext* context = (WailsContext*)ctx;
-    if (context.sidebarContainer != nil) {
-        [context.sidebarContainer expandSidebar:width];
-    }
+    ON_MAIN_THREAD({
+        WailsContext* context = (WailsContext*)ctx;
+        if (context.sidebarContainer != nil) {
+            [context.sidebarContainer expandSidebar:width];
+        }
+    });
 }
 
 void CollapseSidebar(void* ctx) {
-    WailsContext* context = (WailsContext*)ctx;
-    if (context.sidebarContainer != nil) {
-        [context.sidebarContainer collapseSidebar];
-    }
+    ON_MAIN_THREAD({
+        WailsContext* context = (WailsContext*)ctx;
+        if (context.sidebarContainer != nil) {
+            [context.sidebarContainer collapseSidebar];
+        }
+    });
 }
 
 void ReleaseSidebarModel(void* ptr) {
