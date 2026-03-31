@@ -4,6 +4,7 @@
 package darwin
 
 import (
+	"log/slog"
 	"sort"
 	"unsafe"
 
@@ -136,14 +137,17 @@ func newSidebarModel() *SidebarModel {
 	return &SidebarModel{ptr: ptr}
 }
 
-func (m *SidebarModel) addItem(item native.SidebarItem, selectedItem *native.SidebarItem, itemId int, isGrouped bool) {
+func (m *SidebarModel) addItem(item *native.SidebarItem, selectedItem *native.SidebarItem, itemId int, isGrouped bool) {
+	if item == nil {
+		return
+	}
 	cLabel := C.CString(item.Name)
 	var cIcon *C.char
 	if item.Icon != nil {
 		cIcon = C.CString(*item.Icon)
 	}
-	itemPtr := &item
-	if itemPtr == selectedItem {
+	if item == selectedItem {
+		slog.Debug("==================================> SELECT ITEM!!!")
 		C.SidebarModelSetSelectedItem(m.ptr, C.int(itemId))
 	}
 	if isGrouped {
@@ -187,8 +191,11 @@ func CreateSidebarModel(
 			return sidebar.SidebarItems[i].Index < sidebar.SidebarItems[j].Index
 		},
 	)
-	for _, elem := range sidebar.SidebarItems {
-		model.addItem(elem.Value, sidebar.SelectedItem, itemIdProvider(&elem.Value, -1), false)
+	for index := range sidebar.SidebarItems {
+		model.addItem(
+			&sidebar.SidebarItems[index].Value, sidebar.SelectedItem, itemIdProvider(&sidebar.SidebarItems[index].Value, -1),
+			false,
+		)
 	}
 	// Sort and add groups with their items
 	sort.Slice(
@@ -200,8 +207,8 @@ func CreateSidebarModel(
 		group := gelem.Value
 		groupId := groupIdProvider(&group)
 		model.addGroup(group, groupId)
-		for _, item := range group.Items {
-			model.addItem(item, sidebar.SelectedItem, itemIdProvider(&item, groupId), true)
+		for index := range group.Items {
+			model.addItem(&group.Items[index], sidebar.SelectedItem, itemIdProvider(&group.Items[index], groupId), true)
 		}
 	}
 	return model
