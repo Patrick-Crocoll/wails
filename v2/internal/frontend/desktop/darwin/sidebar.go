@@ -4,7 +4,6 @@
 package darwin
 
 import (
-	"log/slog"
 	"sort"
 	"unsafe"
 
@@ -147,7 +146,6 @@ func (m *SidebarModel) addItem(item *native.SidebarItem, selectedItem *native.Si
 		cIcon = C.CString(*item.Icon)
 	}
 	if item == selectedItem {
-		slog.Debug("==================================> SELECT ITEM!!!")
 		C.SidebarModelSetSelectedItem(m.ptr, C.int(itemId))
 	}
 	if isGrouped {

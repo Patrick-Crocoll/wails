@@ -534,8 +534,7 @@
     // (2) item
     NSTableCellView *itemCell = [self createBaseCellWithWidth:tableColumn.width rowHeight:28.0];
     NSImageView *imageView = [[[NSImageView alloc] initWithFrame:NSMakeRect(6, 4, 16, 16)] autorelease];
-    NSImage *resolvedImage = node.icon;
-    [imageView setImage:resolvedImage];
+    [imageView setImage:node.icon];
     if (node.color != nil) {
         if (@available
         (macOS
@@ -546,14 +545,29 @@
         }
     }
     [imageView setImageScaling:NSImageScaleProportionallyDown];
+    [imageView setImageAlignment:NSImageAlignCenter];
+    [imageView setImageFrameStyle:NSImageFrameNone];
     NSTextField *textField = [self createBaseTextFieldWithFrame:NSMakeRect(28, 3, tableColumn.width - 34, 18)];
     [textField setStringValue:node.title != nil ? node.title : @""];
     [textField setFont:[NSFont systemFontOfSize:13.0]];
     [textField setTextColor:[NSColor labelColor]];
-    [itemCell setImageView:imageView];
     [itemCell setTextField:textField];
-    [itemCell addSubview:imageView];
     [itemCell addSubview:textField];
+    [itemCell setImageView:imageView];
+    [itemCell addSubview:imageView];
+    // For some reason icons loaded from images (e.g., png-files) will be shifted to the top and cropped, unless
+    // we set this TranslatesAutoresizingMaskIntoConstraints to NO and then set the constraints manually.
+    [imageView setTranslatesAutoresizingMaskIntoConstraints:NO];
+    [NSLayoutConstraint activateConstraints:@[
+            [imageView.leadingAnchor constraintEqualToAnchor:itemCell.leadingAnchor constant:6],
+            [imageView.centerYAnchor constraintEqualToAnchor:itemCell.centerYAnchor],
+            [imageView.widthAnchor constraintEqualToConstant:20],
+            [imageView.heightAnchor constraintEqualToConstant:20],
+            [textField.leadingAnchor constraintEqualToAnchor:imageView.trailingAnchor constant:6],
+            [textField.centerYAnchor constraintEqualToAnchor:itemCell.centerYAnchor],
+            [textField.trailingAnchor constraintEqualToAnchor:itemCell.trailingAnchor constant:-6],
+            [textField.heightAnchor constraintEqualToConstant:18]
+    ]];
     return itemCell;
 }
 
