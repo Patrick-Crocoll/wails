@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	sidebarController    SidebarController
 	initSBCOnce          sync.Once
 	sbModelRefreshLock   sync.Mutex
 	sidebarItemIdCounter int
@@ -84,10 +83,14 @@ func (s *SidebarController) SetWidth(width int) {
 		defer sbWidthLock.Unlock()
 		SetSidebarWidth(s.w.context, width)
 		s.currentWidth = width
+		s.savedWidth = width
 	}
 }
 
 func (s *SidebarController) Expand() {
+	if !s.collapsed {
+		return
+	}
 	if s.w != nil && s.w.context != nil {
 		s.collapsed = false
 		width := s.savedWidth
@@ -100,6 +103,9 @@ func (s *SidebarController) Expand() {
 }
 
 func (s *SidebarController) Collapse() {
+	if s.collapsed {
+		return
+	}
 	if s.w != nil && s.w.context != nil {
 		s.collapsed = true
 		CollapseSidebar(s.w.context)
@@ -187,14 +193,14 @@ func (w *Window) setupSidebar(sidebar *native.Sidebar) {
 	sbc.Refresh()
 	sbc.SetWidth(sidebar.WidthPixels)
 	if sidebar.OnControlReady != nil {
-		sidebar.OnControlReady(&sbc)
+		sidebar.OnControlReady(sbc)
 	}
 }
 
-func getSidebarController(w *Window) SidebarController {
+func getSidebarController(w *Window) (sidebarController *SidebarController) {
 	initSBCOnce.Do(
 		func() {
-			sidebarController = SidebarController{
+			sidebarController = &SidebarController{
 				w:            w,
 				savedWidth:   -1,
 				selectedItem: -1,
