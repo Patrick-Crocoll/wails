@@ -627,6 +627,8 @@
         self.dividerStyle = NSSplitViewDividerStyleThin;
         self.delegate = self;
         self.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+        // We handle state saving and restoring ourselves in the go-code.
+        [self setAutosaveName:nil];
         // (1) the sidebar view
         self.sidebarView = sidebar;
         // (2) the main view, probably the web view, created by Wails

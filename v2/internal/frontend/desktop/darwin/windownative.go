@@ -4,6 +4,7 @@
 package darwin
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
@@ -107,6 +108,7 @@ func (s *SidebarController) Collapse() {
 		return
 	}
 	if s.w != nil && s.w.context != nil {
+		slog.Debug("===================> collapse received. Collapsing now...")
 		s.collapsed = true
 		CollapseSidebar(s.w.context)
 	}
@@ -192,6 +194,11 @@ func (w *Window) setupSidebar(sidebar *native.Sidebar) {
 	sbc.modelProvider = sidebar.ModelProvider
 	sbc.Refresh()
 	sbc.SetWidth(sidebar.WidthPixels)
+	if sidebar.IsExpanded {
+		sbc.Expand()
+	} else {
+		sbc.Collapse()
+	}
 	if sidebar.OnControlReady != nil {
 		sidebar.OnControlReady(sbc)
 	}
