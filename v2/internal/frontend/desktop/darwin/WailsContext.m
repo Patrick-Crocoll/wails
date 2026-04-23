@@ -289,28 +289,40 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.webview initWithFrame:init configuration:config];
     // #Native: toolbar START
     NSRect contentViewBounds = [contentView bounds];
-    NSStackView *stackView = [[NSStackView alloc] initWithFrame:contentViewBounds];
+    NSView *stackView = [[NSView alloc] initWithFrame:contentViewBounds];
+    [stackView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    NSView *mainAppView = self.webview;
+
     if (withNativeToolbar) {
-        self.toolbar = [[WailsToolbarView alloc] initWithContainerView:contentView];
-        [stackView addArrangedSubview:self.toolbar];
+        // (1) create the toolbar
+        CGFloat toolbarHeight = 52.0;
+        self.toolbar = [[WailsToolbarView alloc] initWithFrame:NSMakeRect(0, NSHeight(contentViewBounds) - toolbarHeight, NSWidth(contentViewBounds), toolbarHeight)];
+        // (2) make the webview a little bit smaller and position it below the toolbar
+        NSRect webviewFrame = NSMakeRect(0, 0, NSWidth(contentViewBounds), NSHeight(contentViewBounds) - toolbarHeight);
+        [self.webview setFrame:webviewFrame];
+        [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+        // (3) add the toolbar to the stackview
+        [stackView addSubview:self.webview];
+        [stackView addSubview:self.toolbar];
+        mainAppView = stackView;
     }
-    [stackView addArrangedSubview:self.webview];
+
     // #Native: sidebar END
     // #Native: sidebar START
     if (withNativeSidebar) {
         WailsSidebarView *sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
-        self.sidebarContainer = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:sidebar mainView:stackView];
+        self.sidebarContainer = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:sidebar mainView:mainAppView];
         [contentView addSubview:self.sidebarContainer];
     } else {
     // #Native: sidebar END
-        [contentView addSubview:stackView];
+        [contentView addSubview:mainAppView];
         [self.webview setAutoresizingMask: NSViewWidthSizable|NSViewHeightSizable];
         CGRect contentViewBounds = [contentView bounds];
         [self.webview setFrame:contentViewBounds];
     // #Native: sidebar START
     }
-    // #Native: sidebar END
     [stackView release];
+    // #Native: sidebar END
 
     if (webviewIsTransparent) {
         [self.webview setValue:[NSNumber numberWithBool:!webviewIsTransparent] forKey:@"drawsBackground"];

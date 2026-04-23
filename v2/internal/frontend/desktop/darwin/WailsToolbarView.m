@@ -328,14 +328,6 @@
 // private properties
 @synthesize iconLoader;
 
-- (instancetype)initWithContainerView:(NSView *)containerView {
-    // Create toolbar view (52pt height is standard for macOS toolbars)
-    CGFloat toolbarHeight = 52.0;
-    NSRect rect = NSMakeRect(0, NSHeight([containerView bounds]) - toolbarHeight, NSWidth([containerView bounds]),
-                             toolbarHeight);
-    return [self initWithFrame:rect];
-}
-
 - (instancetype)initWithFrame:(NSRect)frameRect {
     self = [super initWithFrame:frameRect];
     if (self) {
@@ -344,9 +336,7 @@
         [self setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
         [self setWantsLayer:YES];
         // Set background color using layer-backed view
-        if (@available
-        (macOS
-        10.14, *)) {
+        if (@available(macOS 10.14, *)) {
             // Use a visual effect view for automatic appearance updates
             NSVisualEffectView *effectView = [[NSVisualEffectView alloc] initWithFrame:[self bounds]];
             [effectView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];

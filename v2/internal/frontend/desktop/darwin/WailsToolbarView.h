@@ -30,7 +30,6 @@ typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, char* text);
 @property (nonatomic, copy) WailsToolbarButtonHandler onButtonClicked;
 @property (nonatomic, copy) WailsToolbarTextFieldChangeHandler onChangeText;
 
-- (instancetype)initWithContainerView:(NSView *)containerView;
 - (instancetype)initWithFrame:(NSRect)frameRect ;
 
 @end

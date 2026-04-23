@@ -19,5 +19,19 @@ void* NewToolbarModel(void) {
 void ReleaseToolbarModel(void* ptr) {
     [(id)ptr release];
 }
+
+void SetToolbarCallbacks(void* ctx) {
+    WailsContext* context = (WailsContext*)ctx;
+    if (context.toolbar == nil) {
+        // TODO: log?
+        return;
+    }
+    context.toolbar.onButtonClicked = ^(int buttonId) {
+        GoOnButtonClicked(buttonId);
+    };
+    context.toolbar.onChangeText = ^(int fieldId, char* text) {
+        GoOnTextFieldChanged(fieldId, text);
+    };
+}
 */
 import "C"
