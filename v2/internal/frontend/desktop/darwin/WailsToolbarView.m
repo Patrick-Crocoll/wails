@@ -328,18 +328,18 @@
 // private properties
 @synthesize iconLoader;
 
-- (instancetype)initWithContainerView:(NSView *)containerView model:(WailsToolbarModel *)model {
+- (instancetype)initWithContainerView:(NSView *)containerView {
     // Create toolbar view (52pt height is standard for macOS toolbars)
     CGFloat toolbarHeight = 52.0;
     NSRect rect = NSMakeRect(0, NSHeight([containerView bounds]) - toolbarHeight, NSWidth([containerView bounds]),
                              toolbarHeight);
-    return [self initWithFrame:rect model:model];
+    return [self initWithFrame:rect];
 }
 
-- (instancetype)initWithFrame:(NSRect)frameRect model:(WailsToolbarModel *)model {
+- (instancetype)initWithFrame:(NSRect)frameRect {
     self = [super initWithFrame:frameRect];
     if (self) {
-        _model = model;
+        _model = nil;
         self.iconLoader = [[WailsIconLoader alloc] init];
         [self setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
         [self setWantsLayer:YES];

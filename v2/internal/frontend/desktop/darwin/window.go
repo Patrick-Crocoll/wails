@@ -136,7 +136,7 @@ func NewWindow(frontendOptions *options.App, debug bool, devtools bool) *Window 
 		defaultContextMenuEnabled,
 		windowStartState, startsHidden, minWidth, minHeight, maxWidth, maxHeight, enableFraudulentWebsiteWarnings,
 		preferences, singleInstanceEnabled, singleInstanceUniqueId, enableDragAndDrop, disableWebViewDragAndDrop,
-		withNativeSidebar,
+		withNativeSidebar, C.bool(false),
 	)
 
 	// Create menu

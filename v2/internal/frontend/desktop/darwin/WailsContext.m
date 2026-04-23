@@ -12,7 +12,6 @@
 #import "WailsAlert.h"
 #import "WailsMenu.h"
 #import "WailsWebView.h"
-#import "WailsSidebarView.h"
 #import "WindowDelegate.h"
 #import "message.h"
 #import "Role.h"
@@ -120,6 +119,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     [self.userContentController release];
     [self.applicationMenu release];
     [self.sidebarContainer release]; // #Native: sidebar
+    [self.toolbar release]; // #Native: sidebar
     [super dealloc];
 }
 
@@ -147,7 +147,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
     return NO;
 }
 
-- (void) CreateWindow:(int)width :(int)height :(bool)frameless :(bool)resizable :(bool)zoomable :(bool)fullscreen :(bool)fullSizeContent :(bool)hideTitleBar :(bool)titlebarAppearsTransparent :(bool)hideTitle :(bool)useToolbar :(bool)hideToolbarSeparator :(bool)webviewIsTransparent :(bool)hideWindowOnClose :(NSString*)appearance :(bool)windowIsTranslucent :(int)minWidth :(int)minHeight :(int)maxWidth :(int)maxHeight :(bool)fraudulentWebsiteWarningEnabled :(struct Preferences)preferences :(bool)enableDragAndDrop :(bool)disableWebViewDragAndDrop :(bool)withNativeSidebar {
+- (void) CreateWindow:(int)width :(int)height :(bool)frameless :(bool)resizable :(bool)zoomable :(bool)fullscreen :(bool)fullSizeContent :(bool)hideTitleBar :(bool)titlebarAppearsTransparent :(bool)hideTitle :(bool)useToolbar :(bool)hideToolbarSeparator :(bool)webviewIsTransparent :(bool)hideWindowOnClose :(NSString*)appearance :(bool)windowIsTranslucent :(int)minWidth :(int)minHeight :(int)maxWidth :(int)maxHeight :(bool)fraudulentWebsiteWarningEnabled :(struct Preferences)preferences :(bool)enableDragAndDrop :(bool)disableWebViewDragAndDrop :(bool)withNativeSidebar :(bool)withNativeToolbar {
     NSWindowStyleMask styleMask = 0;
 
     if( !frameless ) {
@@ -191,6 +191,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
         [effectView setBlendingMode:NSVisualEffectBlendingModeBehindWindow];
         [effectView setState:NSVisualEffectStateActive];
         [contentView addSubview:effectView positioned:NSWindowBelow relativeTo:nil];
+        // TODO: The effectView might need to be released here.
     }
 
     if (appearance != nil) {
@@ -286,21 +287,30 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
 
     CGRect init = { 0,0,0,0 };
     [self.webview initWithFrame:init configuration:config];
+    // #Native: toolbar START
+    NSRect contentViewBounds = [contentView bounds];
+    NSStackView *stackView = [[NSStackView alloc] initWithFrame:contentViewBounds];
+    if (withNativeToolbar) {
+        self.toolbar = [[WailsToolbarView alloc] initWithContainerView:contentView];
+        [stackView addArrangedSubview:self.toolbar];
+    }
+    [stackView addArrangedSubview:self.webview];
+    // #Native: sidebar END
     // #Native: sidebar START
     if (withNativeSidebar) {
-        NSRect contentViewBounds = [contentView bounds];
         WailsSidebarView *sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
-        self.sidebarContainer = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:sidebar mainView:self.webview];
+        self.sidebarContainer = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:sidebar mainView:stackView];
         [contentView addSubview:self.sidebarContainer];
     } else {
     // #Native: sidebar END
-        [contentView addSubview:self.webview];
+        [contentView addSubview:stackView];
         [self.webview setAutoresizingMask: NSViewWidthSizable|NSViewHeightSizable];
         CGRect contentViewBounds = [contentView bounds];
         [self.webview setFrame:contentViewBounds];
     // #Native: sidebar START
     }
     // #Native: sidebar END
+    [stackView release];
 
     if (webviewIsTransparent) {
         [self.webview setValue:[NSNumber numberWithBool:!webviewIsTransparent] forKey:@"drawsBackground"];

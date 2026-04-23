@@ -5,7 +5,7 @@
 
 // declaration of the callbacks
 typedef void (^WailsToolbarButtonHandler)(int buttonId);
-typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, NSString* text);
+typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, char* text);
 
 // The description of the toolbar
 @interface WailsToolbarModel : NSObject
@@ -30,8 +30,8 @@ typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, NSString* text);
 @property (nonatomic, copy) WailsToolbarButtonHandler onButtonClicked;
 @property (nonatomic, copy) WailsToolbarTextFieldChangeHandler onChangeText;
 
-- (instancetype)initWithContainerView:(NSView *)containerView model:(WailsToolbarModel *)model;
-- (instancetype)initWithFrame:(NSRect)frameRect model:(WailsToolbarModel *)model;
+- (instancetype)initWithContainerView:(NSView *)containerView;
+- (instancetype)initWithFrame:(NSRect)frameRect ;
 
 @end
 

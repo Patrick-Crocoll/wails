@@ -12,6 +12,7 @@
 #import <WebKit/WebKit.h>
 #import "WailsWebView.h"
 #import "WailsSidebarView.h" // #Native: sidebar
+#import "WailsToolbarView.h" // #Native: toolbar
 
 #if __has_include(<UniformTypeIdentifiers/UTType.h>)
 #define USE_NEW_FILTERS
@@ -61,6 +62,7 @@
 @property (retain) NSString* aboutTitle;
 @property (retain) NSString* aboutDescription;
 @property (retain) WailsSidebarViewContainer* sidebarContainer; // #Native: sidebar
+@property (retain) WailsToolbarView* toolbar; // #Native: toolbar
 
 struct Preferences {
   bool *tabFocusesLinks;
@@ -68,7 +70,7 @@ struct Preferences {
   bool *fullscreenEnabled;
 };
 
-- (void) CreateWindow:(int)width :(int)height :(bool)frameless :(bool)resizable :(bool)zoomable :(bool)fullscreen :(bool)fullSizeContent :(bool)hideTitleBar :(bool)titlebarAppearsTransparent  :(bool)hideTitle :(bool)useToolbar :(bool)hideToolbarSeparator :(bool)webviewIsTransparent :(bool)hideWindowOnClose :(NSString *)appearance :(bool)windowIsTranslucent :(int)minWidth :(int)minHeight :(int)maxWidth :(int)maxHeight :(bool)fraudulentWebsiteWarningEnabled :(struct Preferences)preferences :(bool)enableDragAndDrop :(bool)disableWebViewDragAndDrop :(bool)withNativeSidebar;
+- (void) CreateWindow:(int)width :(int)height :(bool)frameless :(bool)resizable :(bool)zoomable :(bool)fullscreen :(bool)fullSizeContent :(bool)hideTitleBar :(bool)titlebarAppearsTransparent  :(bool)hideTitle :(bool)useToolbar :(bool)hideToolbarSeparator :(bool)webviewIsTransparent :(bool)hideWindowOnClose :(NSString *)appearance :(bool)windowIsTranslucent :(int)minWidth :(int)minHeight :(int)maxWidth :(int)maxHeight :(bool)fraudulentWebsiteWarningEnabled :(struct Preferences)preferences :(bool)enableDragAndDrop :(bool)disableWebViewDragAndDrop :(bool)withNativeSidebar :(bool)withNativeToolbar;
 - (void) SetSize:(int)width :(int)height;
 - (void) SetPosition:(int)x :(int) y;
 - (void) SetMinSize:(int)minWidth :(int)minHeight;
