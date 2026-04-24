@@ -34,8 +34,94 @@ func (w *Window) SetNativeElements(ne *native.Native) {
 		return
 	}
 	w.setupSidebar(ne.Sidebar)
+	w.setupToolbar(ne.Toolbar)
 	// Code for more native support goes here ...
 }
+
+func (w *Window) setupToolbar(toolbar *native.Toolbar) {
+	if toolbar == nil {
+		return
+	}
+	model := newToolbarModel()
+	idCounter := 0
+	addToolbarElements(toolbar.Elements, model, idCounter)
+}
+
+func addToolbarElements(elements []native.ToolbarItem, model *ToolbarModel, idCounter int) int {
+	for _, element := range elements {
+		switch e := element.(type) {
+		case native.ToolbarButton:
+			model.addButton(e.Text, e.Icon, idCounter)
+			idCounter++
+		case *native.ToolbarButton:
+			model.addButton(e.Text, e.Icon, idCounter)
+			idCounter++
+		case native.ToolbarStaticElement:
+			if e.IsSpacer {
+				model.addSpacer()
+			} else {
+				model.addLabel(e.Text, idCounter)
+				idCounter++
+			}
+		case *native.ToolbarStaticElement:
+			if e.IsSpacer {
+				model.addSpacer()
+			} else {
+				model.addLabel(e.Text, idCounter)
+				idCounter++
+			}
+		case *native.ToolbarButtonGroup:
+			idCounter = addToolbarButtonGroup(e, model, idCounter)
+		case native.ToolbarButtonGroup:
+			idCounter = addToolbarButtonGroup(&e, model, idCounter)
+		case *native.ToolbarMenuButton:
+			idCounter = addToolbarMenuButton(e, model, idCounter)
+		case native.ToolbarMenuButton:
+			idCounter = addToolbarMenuButton(&e, model, idCounter)
+		case *native.ToolbarField:
+			model.addTextField(e.IsSearch, idCounter)
+			idCounter++
+		case native.ToolbarField:
+			model.addTextField(e.IsSearch, idCounter)
+			idCounter++
+		}
+	}
+	return idCounter
+}
+
+func addToolbarButtonGroup(group *native.ToolbarButtonGroup, model *ToolbarModel, idCounter int) int {
+	if model == nil || group == nil {
+		return idCounter
+	}
+	model.startButtonGroup(group.Text, idCounter)
+	defer model.endButtonGroup()
+	idCounter++
+	items := make([]native.ToolbarItem, len(group.Buttons))
+	for i, b := range group.Buttons {
+		items[i] = b
+	}
+	idCounter = addToolbarElements(items, model, idCounter)
+	return idCounter
+}
+
+func addToolbarMenuButton(btn *native.ToolbarMenuButton, model *ToolbarModel, idCounter int) int {
+	if model == nil || btn == nil {
+		return idCounter
+	}
+	model.startButtonWithMenu(btn.Text, btn.Icon, idCounter)
+	defer model.endButtonWithMenu()
+	idCounter++
+	if btn.Menu == nil || btn.Menu.Items == nil {
+		return idCounter
+	}
+	for _, item := range btn.Menu.Items {
+		model.addMenuItem(item.Label, idCounter)
+		idCounter++
+	}
+	return idCounter
+}
+
+// sidebar
 
 type SidebarController struct {
 	w             *Window
@@ -57,7 +143,7 @@ func (s *SidebarController) Refresh() {
 		clear(s.groups)
 		clear(s.itemToGroup)
 		sidebarItemIdCounter = -1
-		model := CreateSidebarModel(
+		model := createSidebarModel(
 			s.modelProvider(),
 			func(item *native.SidebarItem, groupId int) int {
 				sidebarItemIdCounter++
@@ -73,7 +159,7 @@ func (s *SidebarController) Refresh() {
 				return sidebarItemIdCounter
 			},
 		)
-		SetContextSidebarModel(s.w.context, model)
+		setContextSidebarModel(s.w.context, model)
 	}
 }
 
@@ -81,7 +167,7 @@ func (s *SidebarController) SetWidth(width int) {
 	if s.w != nil && s.w.context != nil {
 		sbWidthLock.Lock()
 		defer sbWidthLock.Unlock()
-		SetSidebarWidth(s.w.context, width)
+		setSidebarWidth(s.w.context, width)
 		s.currentWidth = width
 		s.savedWidth = width
 	}
@@ -98,7 +184,7 @@ func (s *SidebarController) Expand() {
 			// In this case we set it to -1, which lets the underlying implementation decide a reasonable width
 			width = -1
 		}
-		ExpandSidebar(s.w.context, width)
+		expandSidebar(s.w.context, width)
 		s.currentWidth = width
 	}
 }
@@ -109,7 +195,7 @@ func (s *SidebarController) Collapse() {
 	}
 	if s.w != nil && s.w.context != nil {
 		s.collapsed = true
-		CollapseSidebar(s.w.context)
+		collapseSidebar(s.w.context)
 	}
 }
 
@@ -217,7 +303,7 @@ func getSidebarController(w *Window) (sidebarController *SidebarController) {
 			go sidebarController.startSidebarItemSelectedProcessor()
 			go sidebarController.startSidebarWidthChangedProcessor()
 			go sidebarController.startGroupToggledProcessor()
-			SetSidebarCallbacks(w.context)
+			setSidebarCallbacks(w.context)
 			sidebarInitialized = true
 		},
 	)

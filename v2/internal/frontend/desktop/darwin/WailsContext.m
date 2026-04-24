@@ -307,7 +307,7 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
         mainAppView = stackView;
     }
 
-    // #Native: sidebar END
+    // #Native: toolbar END
     // #Native: sidebar START
     if (withNativeSidebar) {
         WailsSidebarView *sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];

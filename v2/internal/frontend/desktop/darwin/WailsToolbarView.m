@@ -305,9 +305,10 @@
     [item release];
 }
 
-- (void)addTextField:(BOOL)isSearchField {
+- (void)addTextField:(BOOL)isSearchField withId:(int)fieldId {
     WailsToolbarTextField *textField = [[WailsToolbarTextField alloc] init];
     textField.isSearchField = isSearchField;
+    textField.id = fieldId;
     [self.items addObject:textField];
     [textField release];
 }

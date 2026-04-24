@@ -10,6 +10,7 @@ typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, char* text);
 // The description of the toolbar
 @interface WailsToolbarModel : NSObject
 
+// FIXME: label is not used, at the moment!
 - (void)addButtonWithLabel:(NSString *)label andIcon:(NSString *)icon andId:(int)buttonId;
 - (void)startButtonGroupWidthName:(NSString *)name andId:(int)groupId;
 - (void)endButtonGroup;
@@ -20,7 +21,7 @@ typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, char* text);
 - (void)addMenuItem:(NSString *)item andId:(int)itemId;
 - (void)selectMenuItem:(int)itemId;
 - (void)addSpacer;
-- (void)addTextField:(BOOL)isSearchField;
+- (void)addTextField:(BOOL)isSearchField withId:(int)fieldId;
 
 @end
 

@@ -123,7 +123,7 @@ void ReleaseSidebarModel(void* ptr) {
 */
 import "C"
 
-func SetSidebarCallbacks(context unsafe.Pointer) {
+func setSidebarCallbacks(context unsafe.Pointer) {
 	C.SetSidebarCallbacks(context)
 }
 
@@ -177,7 +177,7 @@ func (m *SidebarModel) setSelectedItem(itemId int) {
 
 // CreateSidebarModel builds a WailsSidebarModel from native.Sidebar.
 // Call release() on the result when done.
-func CreateSidebarModel(
+func createSidebarModel(
 	sidebar native.SidebarModel,
 	itemIdProvider func(*native.SidebarItem, int) int,
 	groupIdProvider func(*native.SidebarGroup) int,
@@ -212,8 +212,8 @@ func CreateSidebarModel(
 	return model
 }
 
-// SetContextSidebarModel function to set the model on the context's sidebar
-func SetContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
+// setContextSidebarModel function to set the model on the context's sidebar
+func setContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
 	C.SetSidebarModel(context, model.ptr)
 	// We pass ownership of the model to the objective-c class, so we call release
 	// to decrease the reference counter. Now we are not the owners of the model anymore.
@@ -221,14 +221,14 @@ func SetContextSidebarModel(context unsafe.Pointer, model *SidebarModel) {
 	C.ReleaseSidebarModel(model.ptr)
 }
 
-func SetSidebarWidth(context unsafe.Pointer, width int) {
+func setSidebarWidth(context unsafe.Pointer, width int) {
 	C.SetSidebarWidth(context, C.int(width))
 }
 
-func ExpandSidebar(context unsafe.Pointer, width int) {
+func expandSidebar(context unsafe.Pointer, width int) {
 	C.ExpandSidebar(context, C.int(width))
 }
 
-func CollapseSidebar(context unsafe.Pointer) {
+func collapseSidebar(context unsafe.Pointer) {
 	C.CollapseSidebar(context)
 }
