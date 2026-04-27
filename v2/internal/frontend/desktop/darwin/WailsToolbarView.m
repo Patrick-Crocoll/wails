@@ -118,7 +118,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        self->menuItems = nil;
+        self->menuItems = [[NSMutableArray alloc] init];
     }
     return self;
 }
@@ -144,7 +144,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        self->buttons = nil;
+        self->buttons = [[NSMutableArray alloc] init];
     }
     return self;
 }
@@ -155,7 +155,6 @@
 }
 
 @end
-
 
 // private part of the model
 @interface WailsToolbarModel ()
@@ -226,7 +225,7 @@
         if (![item isKindOfClass:[WailsToolbarButtonGroup class]] || item.id != groupId) {
             continue;
         }
-        WailsToolbarButtonGroup *group = (WailsToolbarButtonGroup *)item;
+        WailsToolbarButtonGroup *group = (WailsToolbarButtonGroup *) item;
         for (WailsToolbarButton *button in group.buttons) {
             if (button.id == buttonId) {
                 button.isSelected = YES;
@@ -280,7 +279,7 @@
         if (![item isKindOfClass:[WailsToolbarMenuButton class]]) {
             continue;
         }
-        WailsToolbarMenuButton *menuButton = (WailsToolbarMenuButton *)item;
+        WailsToolbarMenuButton *menuButton = (WailsToolbarMenuButton *) item;
         for (WailsToolbarMenuItem *menuItem in menuButton.menuItems) {
             if (menuItem.id == itemId) {
                 menuItem.isSelected = YES;
@@ -385,33 +384,98 @@
     CGFloat buttonWidth = 40.0;
     CGFloat buttonHeight = 40.0;
     CGFloat spacing = 6.0;
-    CGFloat iconSize = 20.0;
+    CGFloat iconHeight = 36.0;
+    CGFloat defaultLabelWidth = 120.0;
+
+    BOOL addSpace = NO;
 
     for (WailsToolbarItem *item in self.model.items) {
         if ([item isKindOfClass:[WailsToolbarButton class]]) {
-            WailsToolbarButton *btn = (WailsToolbarButton *)item;
+            WailsToolbarButton *btn = (WailsToolbarButton *) item;
             NSButton *nsButton = [[NSButton alloc] initWithFrame:NSMakeRect(x, y, buttonWidth, buttonHeight)];
-            [nsButton setBordered:YES];
-            [nsButton setBezelStyle:NSBezelStyleRegularSquare];
-            [nsButton setShowsBorderOnlyWhileMouseInside:YES];
-            [nsButton setButtonType:NSButtonTypeMomentaryLight];
-            [nsButton setTarget:self];
-            [nsButton setAction:@selector(toolbarButtonClicked:)];
-            [nsButton setTag:btn.id];
-            if (@available(macOS 11.0, *)) {
-                NSImageSymbolConfiguration *config = [NSImageSymbolConfiguration configurationWithPointSize:16 weight:NSFontWeightRegular scale:NSImageSymbolScaleLarge];
-                NSImage *icon = [self.iconLoader loadIcon:btn.icon];
-                icon = [icon imageWithSymbolConfiguration:config];
-                [nsButton setImage:icon];
-            }
-            [nsButton setTitle:@""];
-            [self addSubview:nsButton];
-            [nsButton release];
-
+            [self addButton:nsButton withDefinition:btn andIconHeight:iconHeight andSpacerInFront:addSpace];
+            addSpace = NO;
             x += buttonWidth + spacing;
-
-            continue;
+        } else if ([item isKindOfClass:[WailsToolbarButtonGroup class]]) {
+            WailsToolbarButtonGroup *grp = (WailsToolbarButtonGroup *) item;
+            fprintf(stderr, "========================> (0) '%s' x: %f\n", grp.label.UTF8String, x);
+            NSSegmentedControl *segmentedControl = [[NSSegmentedControl alloc] initWithFrame:NSMakeRect(x, y, buttonHeight*grp.buttons.count + (2*spacing), buttonHeight)];
+            x += spacing;
+            [segmentedControl setAutoresizingMask:0];
+            [segmentedControl setSegmentCount:grp.buttons.count];
+            [segmentedControl setSegmentStyle:NSSegmentStyleTexturedSquare];
+            [segmentedControl setTrackingMode:NSSegmentSwitchTrackingSelectOne];
+            if (@available(macOS 11.0, *)) {
+                for (int i = 0; i < grp.buttons.count; i++) {
+                    WailsToolbarButton *btn = grp.buttons[i];
+                    NSImage *icon = [self.iconLoader loadIcon:btn.icon withPreferredHeight:iconHeight];
+                    [segmentedControl setImage:icon forSegment:i];
+                    [segmentedControl setWidth:buttonWidth forSegment:i];
+                }
+            }
+            // Select the first segment by default
+            [segmentedControl setSelectedSegment:0];
+            [self addSubview:segmentedControl];
+            [segmentedControl release];
+        } else if ([item isKindOfClass:[WailsToolbarItem class]]) {
+            WailsToolbarItem *basicItem = (WailsToolbarItem *) item;
+            if (basicItem.isSeparator) {
+                addSpace = YES;
+            } else {
+                NSTextField *label = [NSTextField labelWithString:(basicItem.label != nil ? basicItem.label : @"")];
+                [label sizeToFit];
+                NSRect frame = label.frame;
+                frame.size.width = defaultLabelWidth;
+                frame.origin.x = x;
+                frame.origin.y = y + ((buttonHeight - NSHeight(frame)) / 2.0);
+                label.frame = frame;
+                [self addSubview:label];
+                fprintf(stderr, "========================> (1) '%s' x: %f\n", basicItem.label.UTF8String, x);
+                x += NSWidth(label.frame) + spacing;
+                fprintf(stderr, "========================> (2) '%s' x: %f\n", basicItem.label.UTF8String, x);
+            }
         }
+    }
+}
+
+- (void)addButton:(NSButton *)nsButton
+   withDefinition:(WailsToolbarButton *)btn
+      andIconHeight:(CGFloat)iconHeight
+ andSpacerInFront:(BOOL)spacerInFront {
+    [nsButton setBordered:YES];
+    [nsButton setBezelStyle:NSBezelStyleRegularSquare];
+    [nsButton setShowsBorderOnlyWhileMouseInside:YES];
+    [nsButton setButtonType:NSButtonTypeMomentaryLight];
+    [nsButton setTarget:self];
+    [nsButton setAction:@selector(toolbarButtonClicked:)];
+    [nsButton setTag:btn.id];
+    NSImage *icon = [self.iconLoader loadIcon:btn.icon withPreferredHeight:iconHeight];
+    [nsButton setImage:icon];
+    [nsButton setTitle:@""];
+    [self addSubview:nsButton];
+    [nsButton release];
+    // Add a spacer between the button and the previous button if requested
+    if (spacerInFront) {
+        NSControl *lastControl = nil;
+        for (NSView *subview in [self.subviews reverseObjectEnumerator]) {
+            if ([subview isKindOfClass:[NSControl class]]) {
+                lastControl = (NSControl *)subview;
+                break;
+            }
+        }
+        if (lastControl == nil) {
+            return;
+        }
+        NSLayoutConstraint *spacingConstraint = [NSLayoutConstraint
+                constraintWithItem:lastControl
+                         attribute:NSLayoutAttributeTrailing
+                         relatedBy:NSLayoutRelationEqual
+                            toItem:nsButton
+                         attribute:NSLayoutAttributeLeading
+                        multiplier:1.0
+                          constant:-20]; // Negative because trailing to leading
+        spacingConstraint.priority = 250;
+        [self addConstraint:spacingConstraint];
     }
 }
 
@@ -419,7 +483,7 @@
     if (self.onButtonClicked == nil) {
         return;
     }
-    self.onButtonClicked((int)sender.tag);
+    self.onButtonClicked((int) sender.tag);
 }
 
 @end
