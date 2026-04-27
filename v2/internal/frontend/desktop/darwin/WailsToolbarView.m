@@ -370,11 +370,27 @@
     [super dealloc];
 }
 
+- (void)setModel:(WailsToolbarModel *)newModel {
+    if (_model == newModel) {
+        return;
+    }
+    [_model release];
+    _model = [newModel retain];
+    [self initToolbar];
+}
+
 - (void)initToolbar {
+    CGFloat x = 8.0;
+    CGFloat y = 6.0;
+    CGFloat buttonWidth = 40.0;
+    CGFloat buttonHeight = 40.0;
+    CGFloat spacing = 6.0;
+    CGFloat iconSize = 20.0;
+
     for (WailsToolbarItem *item in self.model.items) {
         if ([item isKindOfClass:[WailsToolbarButton class]]) {
             WailsToolbarButton *btn = (WailsToolbarButton *)item;
-            NSButton *nsButton = [[NSButton alloc] initWithFrame:NSMakeRect(8, 6, 40, 40)];
+            NSButton *nsButton = [[NSButton alloc] initWithFrame:NSMakeRect(x, y, buttonWidth, buttonHeight)];
             [nsButton setBordered:YES];
             [nsButton setBezelStyle:NSBezelStyleRegularSquare];
             [nsButton setShowsBorderOnlyWhileMouseInside:YES];
@@ -391,6 +407,9 @@
             [nsButton setTitle:@""];
             [self addSubview:nsButton];
             [nsButton release];
+
+            x += buttonWidth + spacing;
+
             continue;
         }
     }
