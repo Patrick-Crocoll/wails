@@ -44,8 +44,9 @@ type SimpleMenuItemEvent struct {
 type SimpleMenuItemClickHandler func(evt SimpleMenuItemEvent)
 
 type SimpleMenuItem struct {
-	Label string
-	Click SimpleMenuItemClickHandler
+	Label       string
+	IsSeparator bool
+	Click       SimpleMenuItemClickHandler
 }
 
 type SimpleMenu struct {

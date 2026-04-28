@@ -45,6 +45,8 @@ func (w *Window) setupToolbar(toolbar *native.Toolbar) {
 	model := newToolbarModel()
 	idCounter := 0
 	addToolbarElements(toolbar.Elements, model, idCounter)
+	setContextToolbarModel(w.context, model)
+	setToolbarCallbacks(w.context)
 }
 
 func addToolbarElements(elements []native.ToolbarItem, model *ToolbarModel, idCounter int) int {

@@ -20,6 +20,16 @@ void ReleaseToolbarModel(void* ptr) {
     [(id)ptr release];
 }
 
+void SetToolbarModel(void* ctx, void* modelPtr) {
+    WailsContext* context = (WailsContext*)ctx;
+    WailsToolbarModel* model = (WailsToolbarModel*)modelPtr;
+    if (context.toolbar == nil) {
+        // TODO: log?
+        return;
+    }
+    [context.toolbar setModel:model];
+}
+
 void SetToolbarCallbacks(void* ctx) {
     WailsContext* context = (WailsContext*)ctx;
     if (context.toolbar == nil) {
@@ -113,6 +123,14 @@ type ToolbarModel struct {
 func newToolbarModel() *ToolbarModel {
 	ptr := C.NewToolbarModel()
 	return &ToolbarModel{ptr: ptr}
+}
+
+// setContextToolbarModel function to set the model on the context's sidebar
+func setContextToolbarModel(context unsafe.Pointer, model *ToolbarModel) {
+	C.SetToolbarModel(context, model.ptr)
+	// We pass ownership of the model to the objective-c class, so we call release
+	// to decrease the reference counter. Now we are not the owners of the model anymore.
+	C.ReleaseToolbarModel(model.ptr)
 }
 
 func (m *ToolbarModel) addButton(label, icon string, buttonId int) {

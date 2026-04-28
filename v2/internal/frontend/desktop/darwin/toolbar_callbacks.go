@@ -13,7 +13,7 @@ import "log/slog"
 
 //export GoOnButtonClicked
 func GoOnButtonClicked(buttonId C.int) {
-	slog.Debug("Le button est clické", slog.Int("buttonId", int(buttonId)))
+	slog.Debug("=========> (3) Toolbar button clicked:", slog.Int("buttonId", int(buttonId)))
 
 }
 

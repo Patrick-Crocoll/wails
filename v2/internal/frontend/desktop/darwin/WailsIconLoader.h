@@ -6,6 +6,7 @@
 @interface WailsIconLoader : NSObject
 
 - (NSImage *)loadIcon:(NSString *)iconName;
+- (NSImage *)loadIcon:(NSString *)iconName withPreferredHeight:(CGFloat)height;
 
 @end
 

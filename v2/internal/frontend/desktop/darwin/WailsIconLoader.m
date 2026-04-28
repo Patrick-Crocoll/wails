@@ -18,6 +18,47 @@
     return image;
 }
 
+- (NSImage *)loadIcon:(NSString *)iconName withPreferredHeight:(CGFloat)height {
+    if (height <= 0) {
+        return nil;
+    }
+    NSImage *image = [self loadIcon:iconName];
+    if (image == nil) {
+        return nil;
+    }
+    if ([iconName hasPrefix:@"System:"]) {
+        // Let the system handle scaling for system icons
+        if (@available(macOS 11.0, *)) {
+            NSImageSymbolConfiguration *config =
+                    [NSImageSymbolConfiguration configurationWithPointSize:height
+                                                                    weight:NSFontWeightRegular
+                                                                     scale:NSImageSymbolScaleSmall];
+            NSImage *configured = [image imageWithSymbolConfiguration:config];
+            if (configured != nil) {
+                image = configured;
+            }
+        }
+        return image;
+    }
+    NSSize originalSize = [image size];
+    if (originalSize.width <= 0 || originalSize.height <= 0) {
+        return nil;
+    }
+    CGFloat aspectRatio = originalSize.width / originalSize.height;
+    NSSize scaledSize = NSMakeSize(height * aspectRatio, height);
+    NSImage *scaledImage = [[[NSImage alloc] initWithSize:scaledSize] autorelease];
+    [scaledImage lockFocus];
+    [image drawInRect:NSMakeRect(0, 0, scaledSize.width, scaledSize.height)
+             fromRect:NSZeroRect
+            operation:NSCompositingOperationSourceOver
+             fraction:1.0
+       respectFlipped:YES
+                hints:@{NSImageHintInterpolation: @(NSImageInterpolationHigh)}];
+    [scaledImage unlockFocus];
+    [scaledImage setTemplate:[image isTemplate]];
+    return scaledImage;
+}
+
 - (BOOL)isSystemIconName:(NSString *)iconName {
     return iconName != nil && [iconName hasPrefix:@"System:"];
 }
