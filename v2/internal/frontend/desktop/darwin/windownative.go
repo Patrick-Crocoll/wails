@@ -117,7 +117,7 @@ func addToolbarMenuButton(btn *native.ToolbarMenuButton, model *ToolbarModel, id
 		return idCounter
 	}
 	for _, item := range btn.Menu.Items {
-		model.addMenuItem(item.Label, idCounter)
+		model.addMenuItem(item.Label, item.IsSeparator, idCounter)
 		idCounter++
 	}
 	return idCounter

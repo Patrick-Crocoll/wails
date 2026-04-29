@@ -285,13 +285,14 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     }
 }
 
-- (void)addMenuItem:(NSString *)item andId:(int)itemId {
+- (void)addMenuItem:(NSString *)item isSeparator:(int)separator andId:(int)itemId {
     if (self.currentMenuButton == nil) {
         return;
     }
     WailsToolbarMenuItem *menuItem = [[WailsToolbarMenuItem alloc] init];
     menuItem.label = item;
     menuItem.id = itemId;
+    menuItem.isSeparator = separator > 0;
     [self.currentMenuButton.menuItems addObject:menuItem];
     [menuItem release];
 }
@@ -380,11 +381,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
             // Use a visual effect view for automatic appearance updates
             NSVisualEffectView *effectView = [[NSVisualEffectView alloc] initWithFrame:[self bounds]];
             [effectView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-            // [effectView setMaterial:NSVisualEffectMaterialTitlebar]; // OK glass look ?
-            [effectView setMaterial:NSVisualEffectMaterialContentBackground]; // Beschde!!!
-            //[effectView setMaterial:NSVisualEffectMaterialHeaderView];
-            //[effectView setBlendingMode:NSVisualEffectBlendingModeBehindWindow]; // ??
-            //[effectView setBlendingMode:NSVisualEffectBlendingModeWithinWindow]; // ??
+            [effectView setMaterial:NSVisualEffectMaterialContentBackground];
             [effectView setState:NSVisualEffectStateActive];
             [self addSubview:effectView];
             [effectView release];
@@ -432,7 +429,51 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 
 - (void)initToolbar {
     for (WailsToolbarItem *item in self.model.items) {
-        if ([item isKindOfClass:[WailsToolbarButton class]]) {
+        if ([item isKindOfClass:[WailsToolbarMenuButton class]]) {
+            WailsToolbarMenuButton *btn = (WailsToolbarMenuButton *) item;
+            NSPopUpButton *popupButton = [[NSPopUpButton alloc] init];
+            [popupButton setPullsDown:YES];
+            [popupButton setAutoresizingMask:NSViewMinXMargin];
+            [popupButton setBordered:YES];
+            [popupButton setBezelStyle:NSBezelStyleRegularSquare];
+            [popupButton setShowsBorderOnlyWhileMouseInside:YES];
+            [popupButton.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
+            [popupButton addItemWithTitle:@""];
+            NSImage *icn = [iconLoader loadIcon:btn.icon withPreferredHeight:WailsToolbarIconHeight];
+            if (icn != nil) {
+                [[popupButton itemAtIndex:0] setImage:icn];
+            }
+            for (WailsToolbarMenuItem *menuItem in btn.menuItems) {
+                if (menuItem.isSeparator) {
+                    [[popupButton menu] addItem:[NSMenuItem separatorItem]];
+                } else {
+                    [popupButton addItemWithTitle:menuItem.label];
+                }
+            }
+            [self.stack addArrangedSubview:popupButton];
+            [popupButton release];
+        } else if ([item isKindOfClass:[WailsToolbarTextField class]]) {
+            WailsToolbarTextField *textFieldItem = (WailsToolbarTextField *) item;
+
+            NSSearchField *textField = [[NSSearchField alloc] init];
+            [textField setTag:textFieldItem.id];
+            //[textField setDelegate:self]; FIXME
+            [textField setTarget:self];
+            [textField setAction:@selector(toolbarTextFieldChanged:)];
+            [textField setSendsSearchStringImmediately:YES];
+            [textField setTranslatesAutoresizingMaskIntoConstraints:NO];
+
+            [textField.heightAnchor constraintEqualToConstant:28.0].active = YES;
+            [textField.widthAnchor constraintEqualToConstant:180.0].active = YES;
+
+            if (!textFieldItem.isSearchField) {
+                NSSearchFieldCell *cell = (NSSearchFieldCell *) [textField cell];
+                [cell setSearchButtonCell:nil];
+            }
+
+            [self.stack addArrangedSubview:textField];
+            [textField release];
+        } else if ([item isKindOfClass:[WailsToolbarButton class]]) {
             WailsToolbarButton *btn = (WailsToolbarButton *) item;
             [self addButton:btn andIconHeight:WailsToolbarIconHeight];
         } else if ([item isKindOfClass:[WailsToolbarButtonGroup class]]) {

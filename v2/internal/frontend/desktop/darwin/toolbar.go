@@ -85,10 +85,10 @@ void ToolbarEndButtonWithMenu(void* ptr) {
     [model endButtonWithMenu];
 }
 
-void ToolbarAddMenuItem(void* ptr, char* item, int itemId) {
+void ToolbarAddMenuItem(void* ptr, char* item, int isSeparator, int itemId) {
     WailsToolbarModel* model = (WailsToolbarModel*)ptr;
     NSString* nsItem = [NSString stringWithUTF8String:item];
-    [model addMenuItem:nsItem andId:itemId];
+    [model addMenuItem:nsItem isSeparator:isSeparator andId:itemId];
 }
 
 void ToolbarSelectMenuItem(void* ptr, int itemId) {
@@ -173,9 +173,13 @@ func (m *ToolbarModel) endButtonWithMenu() {
 	C.ToolbarEndButtonWithMenu(m.ptr)
 }
 
-func (m *ToolbarModel) addMenuItem(item string, itemId int) {
+func (m *ToolbarModel) addMenuItem(item string, isSeparator bool, itemId int) {
 	cItem := C.CString(item)
-	C.ToolbarAddMenuItem(m.ptr, cItem, C.int(itemId))
+	sep := 0
+	if isSeparator {
+		sep = 1
+	}
+	C.ToolbarAddMenuItem(m.ptr, cItem, C.int(sep), C.int(itemId))
 	C.free(unsafe.Pointer(cItem))
 }
 

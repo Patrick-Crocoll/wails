@@ -18,7 +18,7 @@ typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, char* text);
 - (void)addLabel:(NSString *)label withId:(int)labelId;
 - (void)startButtonWithMenu:(NSString *)label andIcon:(NSString *)icon andId:(int)buttonId;
 - (void)endButtonWithMenu;
-- (void)addMenuItem:(NSString *)item andId:(int)itemId;
+- (void)addMenuItem:(NSString *)item isSeparator:(int)separator andId:(int)itemId;
 - (void)selectMenuItem:(int)itemId;
 - (void)addSpacer;
 - (void)addTextField:(BOOL)isSearchField withId:(int)fieldId;
