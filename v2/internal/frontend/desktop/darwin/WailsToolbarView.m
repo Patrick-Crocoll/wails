@@ -107,6 +107,23 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     [super dealloc];
 }
 
+// returns a UI button with from this definition of a button.
+- (NSButton *)toImageButton:(WailsIconLoader *)iconLoader {
+    NSButton *button = [[NSButton alloc] init];
+    [button setBordered:YES];
+    [button setBezelStyle:NSBezelStyleRegularSquare];
+    [button setShowsBorderOnlyWhileMouseInside:YES];
+    [button setTranslatesAutoresizingMaskIntoConstraints:NO];
+    [button.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
+    NSImage *icn = [iconLoader loadIcon:self.icon withPreferredHeight:WailsToolbarIconHeight];
+    if (icn != nil) {
+        [button setImage:icn];
+    }
+    [button setTitle:@""];
+    [button setTag:self.id];
+    return button;
+}
+
 @end
 
 // A toolbar button with a menu
@@ -417,8 +434,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     for (WailsToolbarItem *item in self.model.items) {
         if ([item isKindOfClass:[WailsToolbarButton class]]) {
             WailsToolbarButton *btn = (WailsToolbarButton *) item;
-            NSButton *nsButton = [[NSButton alloc] init];
-            [self addButton:nsButton withDefinition:btn andIconHeight:WailsToolbarIconHeight];
+            [self addButton:btn andIconHeight:WailsToolbarIconHeight];
         } else if ([item isKindOfClass:[WailsToolbarButtonGroup class]]) {
             WailsToolbarButtonGroup *grp = (WailsToolbarButtonGroup *) item;
             WailsToolbarButtonGroupView *groupView = [[WailsToolbarButtonGroupView alloc]
@@ -458,22 +474,13 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     }
 }
 
-- (void)addButton:(NSButton *)nsButton
-   withDefinition:(WailsToolbarButton *)btn
+- (void)addButton:(WailsToolbarButton *)btn
       andIconHeight:(CGFloat)iconHeight {
-    [nsButton setBordered:YES];
-    [nsButton setBezelStyle:NSBezelStyleRegularSquare];
-    [nsButton setShowsBorderOnlyWhileMouseInside:YES];
-    [nsButton setButtonType:NSButtonTypeMomentaryLight];
-    [nsButton setTranslatesAutoresizingMaskIntoConstraints:NO];
-    [nsButton.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
+    NSButton *nsButton = [btn toImageButton:self.iconLoader];
     [nsButton setTarget:self];
     [nsButton setAction:@selector(toolbarButtonClicked:)];
-    [nsButton setTag:btn.id];
-    NSImage *icon = [self.iconLoader loadIcon:btn.icon withPreferredHeight:iconHeight];
-    [nsButton setImage:icon];
-    [nsButton setTitle:@""];
     [self.stack addArrangedSubview:nsButton];
+    [nsButton setButtonType:NSButtonTypeMomentaryLight];
     [nsButton release];
 }
 
@@ -549,34 +556,16 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
                 }
             }
             addSeparator = YES;
-
-            // button
-            NSButton *button = [[NSButton alloc] init];
-
-            [button setBordered:YES];
-            [button setBezelStyle:NSBezelStyleRegularSquare];
-            [button setShowsBorderOnlyWhileMouseInside:YES];
-            [button setButtonType:NSButtonTypeToggle];
-            [button setTranslatesAutoresizingMaskIntoConstraints:NO];
-
-            [button.widthAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
-            [button.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
-
-            [button setTag:definition.id];
-            [button setTitle:@""];
+            // Add the button
+            NSButton *button = [definition toImageButton:iconLoader];
+            [self.buttons addObject:button];
             [button setTarget:self];
             [button setAction:@selector(groupButtonClicked:)];
-
-            NSImage *icon = [iconLoader loadIcon:definition.icon withPreferredHeight:WailsToolbarIconHeight];
-            if (icon != nil) {
-                [button setImage:icon];
-            }
-
+            [button.widthAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
+            [button setButtonType:NSButtonTypeToggle];
             if (definition.isSelected) {
                 [button setState:NSControlStateValueOn];
             }
-
-            [self.buttons addObject:button];
             [stack addArrangedSubview:button];
             [button release];
         }
