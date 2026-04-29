@@ -1,6 +1,11 @@
 #import "WailsToolbarView.h"
 #import "WailsIconLoader.h"
 
+static const CGFloat WailsToolbarButtonHeight = 44.0;
+static const CGFloat WailsToolbarIconHeight = 36.0;
+static const CGFloat WailsToolbarSpacing = 6.0;
+static const CGFloat WailsToolbarSpacerWidth = 20.0;
+
 // A toolbar item: Button, ButtonGroup, Button with menu, TextField
 @interface WailsToolbarItem : NSObject
 
@@ -318,6 +323,21 @@
 
 @property(nonatomic, retain) WailsIconLoader *iconLoader;
 @property(nonatomic, retain) NSStackView *stack;
+@property(nonatomic, retain) NSView *firstStretchSpacer;
+
+@end
+
+@interface WailsToolbarButtonGroupView : NSView
+
+@property(nonatomic, retain) NSMutableArray<NSButton *> *buttons;
+@property(nonatomic, retain) NSTrackingArea *trackingArea; // for highlight of the View
+@property(nonatomic, assign) id target;
+@property(nonatomic, assign) SEL action;
+
+- (instancetype)initWithButtonGroup:(WailsToolbarButtonGroup *)group
+                         iconLoader:(WailsIconLoader *)iconLoader
+                             target:(id)target
+                             action:(SEL)action;
 
 @end
 
@@ -329,6 +349,7 @@
 // private properties
 @synthesize iconLoader;
 @synthesize stack;
+@synthesize firstStretchSpacer;
 
 - (instancetype)initWithFrame:(NSRect)frameRect {
     self = [super initWithFrame:frameRect];
@@ -363,7 +384,7 @@
         self.stack = [[NSStackView alloc] initWithFrame:self.bounds];
         self.stack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
         self.stack.alignment = NSLayoutAttributeCenterY;
-        self.stack.spacing = 6.0;
+        self.stack.spacing = WailsToolbarSpacing;
         self.stack.translatesAutoresizingMaskIntoConstraints = NO;
         [self addSubview:self.stack];
         [NSLayoutConstraint activateConstraints:@[
@@ -393,41 +414,45 @@
 }
 
 - (void)initToolbar {
-    CGFloat iconHeight = 36.0;
-
     for (WailsToolbarItem *item in self.model.items) {
         if ([item isKindOfClass:[WailsToolbarButton class]]) {
             WailsToolbarButton *btn = (WailsToolbarButton *) item;
             NSButton *nsButton = [[NSButton alloc] init];
-            [self addButton:nsButton withDefinition:btn andIconHeight:iconHeight];
+            [self addButton:nsButton withDefinition:btn andIconHeight:WailsToolbarIconHeight];
         } else if ([item isKindOfClass:[WailsToolbarButtonGroup class]]) {
             WailsToolbarButtonGroup *grp = (WailsToolbarButtonGroup *) item;
-            NSSegmentedControl *segmentedControl = [[NSSegmentedControl alloc] init];
-            [segmentedControl setSegmentCount:grp.buttons.count];
-            [segmentedControl setSegmentStyle:NSSegmentStyleTexturedSquare];
-            [segmentedControl setTrackingMode:NSSegmentSwitchTrackingSelectOne];
-            for (int i = 0; i < grp.buttons.count; i++) {
-                WailsToolbarButton *btn = grp.buttons[i];
-                NSImage *icon = [self.iconLoader loadIcon:btn.icon withPreferredHeight:iconHeight];
-                if (icon == nil) {
-                    [segmentedControl setLabel:(btn.label != nil ? btn.label : @"") forSegment:i];
-                } else {
-                    [segmentedControl setImage:icon forSegment:i];
-                }
-                [segmentedControl setImage:icon forSegment:i];
-            }
-            // Select the first segment by default
-            [segmentedControl setSelectedSegment:0];
-            [self.stack addArrangedSubview:segmentedControl];
-            [segmentedControl release];
+            WailsToolbarButtonGroupView *groupView = [[WailsToolbarButtonGroupView alloc]
+                    initWithButtonGroup:grp
+                             iconLoader:self.iconLoader
+                                 target:self
+                                 action:@selector(toolbarButtonClicked:)];
+            [self.stack addArrangedSubview:groupView];
+            [groupView release];
         } else if ([item isKindOfClass:[WailsToolbarItem class]]) {
             WailsToolbarItem *basicItem = (WailsToolbarItem *) item;
             if (basicItem.isSeparator) {
-                // TODO
+                NSView *stretch = [[NSView alloc] initWithFrame:NSZeroRect];
+                [stretch setContentHuggingPriority:NSLayoutPriorityDefaultLow forOrientation:NSLayoutConstraintOrientationHorizontal];
+                [self.stack addArrangedSubview:stretch];
+                // Make this stretchy spacer the same size as the first stretchy spacer
+                if (self.firstStretchSpacer == nil) {
+                    self.firstStretchSpacer = stretch;
+                } else {
+                    [stretch.widthAnchor constraintEqualToAnchor:self.firstStretchSpacer.widthAnchor].active = YES;
+                }
+                [stretch release];
             } else {
-                NSTextField *label = [NSTextField labelWithString:(basicItem.label != nil ? basicItem.label : @"")];
-                [label sizeToFit];
-                [self.stack addArrangedSubview:label];
+                if ([WailsToolbarView isStringEmpty: basicItem.label]) {
+                    NSView *spacer = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, WailsToolbarSpacerWidth, 1)];
+                    [spacer.widthAnchor constraintEqualToConstant:WailsToolbarSpacerWidth].active = YES;
+                    [self.stack addArrangedSubview:spacer];
+                    [spacer release];
+                } else {
+                    NSTextField *label = [NSTextField labelWithString:(basicItem.label != nil ? basicItem.label : @"")];
+                    [label sizeToFit];
+                    [self.stack addArrangedSubview:label];
+                    [label release];
+                }
             }
         }
     }
@@ -440,6 +465,8 @@
     [nsButton setBezelStyle:NSBezelStyleRegularSquare];
     [nsButton setShowsBorderOnlyWhileMouseInside:YES];
     [nsButton setButtonType:NSButtonTypeMomentaryLight];
+    [nsButton setTranslatesAutoresizingMaskIntoConstraints:NO];
+    [nsButton.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
     [nsButton setTarget:self];
     [nsButton setAction:@selector(toolbarButtonClicked:)];
     [nsButton setTag:btn.id];
@@ -455,6 +482,171 @@
         return;
     }
     self.onButtonClicked((int) sender.tag);
+}
+
++ (BOOL)isStringEmpty:(NSString *)string {
+    if (string == nil || [string isKindOfClass:[NSNull class]]) {
+        return YES;
+    }
+    // Trim whitespace and newlines, then check length
+    NSString *trimmed = [string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return trimmed.length == 0;
+}
+
+@end
+
+// A group of toggle buttons
+@implementation WailsToolbarButtonGroupView
+
+@synthesize buttons;
+@synthesize trackingArea;
+@synthesize target;
+@synthesize action;
+
+- (instancetype)initWithButtonGroup:(WailsToolbarButtonGroup *)group
+                         iconLoader:(WailsIconLoader *)iconLoader
+                             target:(id)buttonTarget
+                             action:(SEL)buttonAction {
+    self = [super init];
+    if (self) {
+        self.wantsLayer = YES;
+        self.layer.cornerRadius = 6.0;
+        self.layer.masksToBounds = YES;
+
+        self.buttons = [[[NSMutableArray alloc] init] autorelease];
+        self.target = buttonTarget;
+        self.action = buttonAction;
+
+        NSStackView *stack = [[NSStackView alloc] init];
+        stack.orientation = NSUserInterfaceLayoutOrientationHorizontal;
+        stack.alignment = NSLayoutAttributeCenterY;
+        stack.spacing = 2.0;
+        stack.translatesAutoresizingMaskIntoConstraints = NO;
+
+        [self addSubview:stack];
+
+        [NSLayoutConstraint activateConstraints:@[
+                [stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+                [stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+                [stack.topAnchor constraintEqualToAnchor:self.topAnchor],
+                [stack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+        ]];
+
+        BOOL addSeparator = NO;
+
+        for (WailsToolbarButton *definition in group.buttons) {
+            // separator line between buttons
+            if (@available(macOS 10.14, *)) {
+                if (addSeparator) {
+                    NSView *separator = [[NSView alloc] init];
+                    [separator setTranslatesAutoresizingMaskIntoConstraints:NO];
+                    [separator setWantsLayer:YES];
+                    [separator.layer setBackgroundColor:[[[NSColor lightGrayColor] colorWithAlphaComponent:0.1] CGColor]];
+                    [stack addArrangedSubview:separator];
+                    // Set fixed width (1pt), height comes from stack
+                    [separator.widthAnchor constraintEqualToConstant:1].active = YES;
+                    [separator release];
+                }
+            }
+            addSeparator = YES;
+
+            // button
+            NSButton *button = [[NSButton alloc] init];
+
+            [button setBordered:YES];
+            [button setBezelStyle:NSBezelStyleRegularSquare];
+            [button setShowsBorderOnlyWhileMouseInside:YES];
+            [button setButtonType:NSButtonTypeToggle];
+            [button setTranslatesAutoresizingMaskIntoConstraints:NO];
+
+            [button.widthAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
+            [button.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
+
+            [button setTag:definition.id];
+            [button setTitle:@""];
+            [button setTarget:self];
+            [button setAction:@selector(groupButtonClicked:)];
+
+            NSImage *icon = [iconLoader loadIcon:definition.icon withPreferredHeight:WailsToolbarIconHeight];
+            if (icon != nil) {
+                [button setImage:icon];
+            }
+
+            if (definition.isSelected) {
+                [button setState:NSControlStateValueOn];
+            }
+
+            [self.buttons addObject:button];
+            [stack addArrangedSubview:button];
+            [button release];
+        }
+        [self invalidateIntrinsicContentSize];
+        [stack release];
+        [self highlightSelectedButton];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    [trackingArea release];
+    [buttons release];
+    [super dealloc];
+}
+
+- (NSSize)intrinsicContentSize {
+    NSSize size = [super intrinsicContentSize];
+    size.height = WailsToolbarButtonHeight;
+    return size;
+}
+
+- (void)updateTrackingAreas {
+    [super updateTrackingAreas];
+    if (self.trackingArea != nil) {
+        [self removeTrackingArea:self.trackingArea];
+        self.trackingArea = nil;
+    }
+    self.trackingArea = [[[NSTrackingArea alloc] initWithRect:NSZeroRect
+                                                      options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect
+                                                        owner:self
+                                                     userInfo:nil] autorelease];
+    [self addTrackingArea:self.trackingArea];
+}
+
+- (void)mouseEntered:(NSEvent *)event {
+    self.layer.backgroundColor = [[[NSColor lightGrayColor] colorWithAlphaComponent:0.1] CGColor];
+}
+
+- (void)mouseExited:(NSEvent *)event {
+    self.layer.backgroundColor = nil;
+}
+
+- (void)groupButtonClicked:(NSButton *)sender {
+    for (NSButton *button in self.buttons) {
+        [button setState:(button == sender ? NSControlStateValueOn : NSControlStateValueOff)];
+    }
+    if (self.target != nil && self.action != nil && [self.target respondsToSelector:self.action]) {
+        [NSApp sendAction:self.action to:self.target from:sender];
+    }
+    [self highlightSelectedButton];
+}
+
+- (void)highlightSelectedButton {
+    for (NSButton *button in self.buttons) {
+        if (button.state == NSControlStateValueOn) {
+            if (@available(macOS 10.14, *)) {
+                [button.layer setBackgroundColor:[[[NSColor lightGrayColor] colorWithAlphaComponent:0.15] CGColor]];
+                [button setWantsLayer:YES];
+            } else {
+                button.showsBorderOnlyWhileMouseInside = YES;
+            }
+        } else {
+            if (@available(macOS 10.14, *)) {
+                [button.layer setBackgroundColor:Nil];
+            } else {
+                button.showsBorderOnlyWhileMouseInside = NO;
+            }
+        }
+    }
 }
 
 @end
