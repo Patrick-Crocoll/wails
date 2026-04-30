@@ -25,11 +25,17 @@ type SidebarGroupToggleState struct {
 	collapsed bool
 }
 
+type ToolbarTextChange struct {
+	id  int
+	txt string
+}
+
 var (
 	sidebarItemSelectBuffer       = make(chan int, 10)
 	sidebarGroupToggleStateBuffer = make(chan SidebarGroupToggleState, 10)
 	sidebarWidthChangedBuffer     = make(chan int, 10)
 	toolbarButtonClickedBuffer    = make(chan int, 10)
+	toolbarTextChangedBuffer      = make(chan ToolbarTextChange, 10)
 )
 
 func (w *Window) SetNativeElements(ne *native.Native) {
@@ -66,6 +72,7 @@ func getToolbarController(w *Window) (toolbarController *ToolbarController) {
 				model: newToolbarModel(),
 			}
 			go toolbarController.startToolbarButtonClickedProcessor()
+			go toolbarController.startToolbarTextChangedProcessor()
 			toolbarInitialized = true
 		},
 	)
@@ -78,28 +85,33 @@ func (ctrl *ToolbarController) buttonClicked(buttonId int) {
 			continue
 		}
 		switch e := element.(type) {
-		case native.ToolbarButton:
-			e.Click(
-				native.ToolbarButtonEvent{
-					Btn: &e,
-				},
-			)
 		case *native.ToolbarButton:
 			e.Click(
 				native.ToolbarButtonEvent{
 					Btn: e,
 				},
 			)
-		case native.SimpleMenuItem:
-			e.Click(
-				native.SimpleMenuItemEvent{
-					Item: &e,
-				},
-			)
 		case *native.SimpleMenuItem:
 			e.Click(
 				native.SimpleMenuItemEvent{
 					Item: e,
+				},
+			)
+		}
+	}
+}
+
+func (ctrl *ToolbarController) textChanged(txt ToolbarTextChange) {
+	for id, element := range ctrl.items {
+		if id != txt.id {
+			continue
+		}
+		switch e := element.(type) {
+		case *native.ToolbarField:
+			e.TextChanged(
+				native.ToolbarFieldTextEvent{
+					Field: e,
+					Text:  txt.txt,
 				},
 			)
 		}
@@ -193,6 +205,12 @@ func (ctrl *ToolbarController) addTextField(txtField *native.ToolbarField) {
 func (ctrl *ToolbarController) startToolbarButtonClickedProcessor() {
 	for buttonId := range toolbarButtonClickedBuffer {
 		ctrl.buttonClicked(buttonId)
+	}
+}
+
+func (ctrl *ToolbarController) startToolbarTextChangedProcessor() {
+	for txt := range toolbarTextChangedBuffer {
+		ctrl.textChanged(txt)
 	}
 }
 
