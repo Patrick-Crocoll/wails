@@ -16,6 +16,8 @@ var (
 	sidebarItemIdCounter int
 	sidebarInitialized   bool
 	sbWidthLock          sync.Mutex
+	initTBCOnce          sync.Once
+	toolbarInitialized   bool
 )
 
 type SidebarGroupToggleState struct {
@@ -27,6 +29,7 @@ var (
 	sidebarItemSelectBuffer       = make(chan int, 10)
 	sidebarGroupToggleStateBuffer = make(chan SidebarGroupToggleState, 10)
 	sidebarWidthChangedBuffer     = make(chan int, 10)
+	toolbarButtonClickedBuffer    = make(chan int, 10)
 )
 
 func (w *Window) SetNativeElements(ne *native.Native) {
@@ -38,89 +41,159 @@ func (w *Window) SetNativeElements(ne *native.Native) {
 	// Code for more native support goes here ...
 }
 
+type ToolbarController struct {
+	w         *Window
+	items     map[int]native.ToolbarItem
+	model     *ToolbarModel
+	idCounter int
+}
+
 func (w *Window) setupToolbar(toolbar *native.Toolbar) {
 	if toolbar == nil {
 		return
 	}
-	model := newToolbarModel()
-	idCounter := 0
-	addToolbarElements(toolbar.Elements, model, idCounter)
-	setContextToolbarModel(w.context, model)
+	ctrl := getToolbarController(w)
+	addToolbarElements(ctrl, toolbar.Elements)
+	setContextToolbarModel(w.context, ctrl.model)
 	setToolbarCallbacks(w.context)
 }
 
-func addToolbarElements(elements []native.ToolbarItem, model *ToolbarModel, idCounter int) int {
+func getToolbarController(w *Window) (toolbarController *ToolbarController) {
+	initTBCOnce.Do(
+		func() {
+			toolbarController = &ToolbarController{
+				items: map[int]native.ToolbarItem{},
+				model: newToolbarModel(),
+			}
+			go toolbarController.startToolbarButtonClickedProcessor()
+			toolbarInitialized = true
+		},
+	)
+	return
+}
+
+func (ctrl *ToolbarController) buttonClicked(buttonId int) {
+	for id, element := range ctrl.items {
+		if id != buttonId {
+			continue
+		}
+		switch e := element.(type) {
+		case native.ToolbarButton:
+			e.Click(
+				native.ToolbarButtonEvent{
+					Btn: &e,
+				},
+			)
+		case *native.ToolbarButton:
+			e.Click(
+				native.ToolbarButtonEvent{
+					Btn: e,
+				},
+			)
+		case native.SimpleMenuItem:
+			e.Click(
+				native.SimpleMenuItemEvent{
+					Item: &e,
+				},
+			)
+		case *native.SimpleMenuItem:
+			e.Click(
+				native.SimpleMenuItemEvent{
+					Item: e,
+				},
+			)
+		}
+	}
+}
+
+func addToolbarElements(ctrl *ToolbarController, elements []native.ToolbarItem) int {
 	for _, element := range elements {
 		switch e := element.(type) {
 		case native.ToolbarButton:
-			model.addButton(e.Text, e.Icon, idCounter)
-			idCounter++
+			ctrl.addToolbarButton(&e)
 		case *native.ToolbarButton:
-			model.addButton(e.Text, e.Icon, idCounter)
-			idCounter++
+			ctrl.addToolbarButton(e)
 		case native.ToolbarStaticElement:
-			if e.IsSpacer {
-				model.addSpacer()
-			} else {
-				model.addLabel(e.Text, idCounter)
-				idCounter++
-			}
+			ctrl.addToolbarStaticElement(&e)
 		case *native.ToolbarStaticElement:
-			if e.IsSpacer {
-				model.addSpacer()
-			} else {
-				model.addLabel(e.Text, idCounter)
-				idCounter++
-			}
+			ctrl.addToolbarStaticElement(e)
 		case *native.ToolbarButtonGroup:
-			idCounter = addToolbarButtonGroup(e, model, idCounter)
+			ctrl.addToolbarButtonGroup(e)
 		case native.ToolbarButtonGroup:
-			idCounter = addToolbarButtonGroup(&e, model, idCounter)
+			ctrl.addToolbarButtonGroup(&e)
 		case *native.ToolbarMenuButton:
-			idCounter = addToolbarMenuButton(e, model, idCounter)
+			ctrl.addToolbarMenuButton(e)
 		case native.ToolbarMenuButton:
-			idCounter = addToolbarMenuButton(&e, model, idCounter)
+			ctrl.addToolbarMenuButton(&e)
 		case *native.ToolbarField:
-			model.addTextField(e.IsSearch, idCounter)
-			idCounter++
+			ctrl.addTextField(e)
 		case native.ToolbarField:
-			model.addTextField(e.IsSearch, idCounter)
-			idCounter++
+			ctrl.addTextField(&e)
 		}
 	}
-	return idCounter
+	return ctrl.idCounter
 }
 
-func addToolbarButtonGroup(group *native.ToolbarButtonGroup, model *ToolbarModel, idCounter int) int {
-	if model == nil || group == nil {
-		return idCounter
+func (ctrl *ToolbarController) addToolbarButton(button *native.ToolbarButton) {
+	if ctrl.model == nil || button == nil {
+		return
 	}
-	model.startButtonGroup(group.Text, idCounter)
-	defer model.endButtonGroup()
-	idCounter++
+	ctrl.model.addButton(button.Text, button.Icon, button.IsSelected, ctrl.idCounter)
+	ctrl.items[ctrl.idCounter] = button
+	ctrl.idCounter++
+}
+
+func (ctrl *ToolbarController) addToolbarStaticElement(e *native.ToolbarStaticElement) {
+	if e.IsSpacer {
+		ctrl.model.addSpacer()
+	} else {
+		ctrl.model.addLabel(e.Text, ctrl.idCounter)
+		ctrl.items[ctrl.idCounter] = e
+		ctrl.idCounter++
+	}
+}
+
+func (ctrl *ToolbarController) addToolbarButtonGroup(group *native.ToolbarButtonGroup) {
+	if ctrl.model == nil || group == nil {
+		return
+	}
+	ctrl.model.startButtonGroup(group.Text, ctrl.idCounter)
+	defer ctrl.model.endButtonGroup()
+	ctrl.idCounter++
 	items := make([]native.ToolbarItem, len(group.Buttons))
 	for i, b := range group.Buttons {
 		items[i] = b
 	}
-	idCounter = addToolbarElements(items, model, idCounter)
-	return idCounter
+	ctrl.idCounter = addToolbarElements(ctrl, items)
 }
 
-func addToolbarMenuButton(btn *native.ToolbarMenuButton, model *ToolbarModel, idCounter int) int {
-	if model == nil || btn == nil {
-		return idCounter
+func (ctrl *ToolbarController) addToolbarMenuButton(btn *native.ToolbarMenuButton) {
+	if ctrl.model == nil || btn == nil {
+		return
 	}
-	model.startButtonWithMenu(btn.Text, btn.Icon, idCounter)
-	defer model.endButtonWithMenu()
-	idCounter++
+	ctrl.model.startButtonWithMenu(btn.Text, btn.Icon, ctrl.idCounter)
+	defer ctrl.model.endButtonWithMenu()
+	ctrl.idCounter++
 	if btn.Menu == nil || btn.Menu.Items == nil {
-		return idCounter
+		return
 	}
 	for _, item := range btn.Menu.Items {
-		model.addMenuItem(item.Label, item.IsSeparator, idCounter)
-		idCounter++
+		ctrl.model.addMenuItem(item.Label, item.IsSeparator, item.IsSelected, ctrl.idCounter)
+		ctrl.items[ctrl.idCounter] = item
+		ctrl.idCounter++
 	}
-	return idCounter
+}
+
+func (ctrl *ToolbarController) addTextField(txtField *native.ToolbarField) {
+	ctrl.model.addTextField(txtField.IsSearch, ctrl.idCounter)
+	ctrl.items[ctrl.idCounter] = txtField
+	ctrl.idCounter++
+}
+
+func (ctrl *ToolbarController) startToolbarButtonClickedProcessor() {
+	for buttonId := range toolbarButtonClickedBuffer {
+		ctrl.buttonClicked(buttonId)
+	}
 }
 
 // sidebar

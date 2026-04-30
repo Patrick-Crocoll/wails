@@ -210,11 +210,12 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     [super dealloc];
 }
 
-- (void)addButtonWithLabel:(NSString *)label andIcon:(NSString *)icon andId:(int)buttonId {
+- (void)addButtonWithLabel:(NSString *)label isSelected:(BOOL)selected andIcon:(NSString *)icon andId:(int)buttonId {
     WailsToolbarButton *button = [[WailsToolbarButton alloc] init];
     button.label = label;
     button.icon = icon;
     button.id = buttonId;
+    button.isSelected = selected;
     if (self.currentGroup != nil) {
         [self.currentGroup.buttons addObject:button];
     } else {
@@ -285,14 +286,15 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     }
 }
 
-- (void)addMenuItem:(NSString *)item isSeparator:(int)separator andId:(int)itemId {
+- (void)addMenuItem:(NSString *)item isSeparator:(BOOL)separator isSelected:(BOOL)selected andId:(int)itemId {
     if (self.currentMenuButton == nil) {
         return;
     }
     WailsToolbarMenuItem *menuItem = [[WailsToolbarMenuItem alloc] init];
     menuItem.label = item;
     menuItem.id = itemId;
-    menuItem.isSeparator = separator > 0;
+    menuItem.isSeparator = separator;
+    menuItem.isSelected = selected;
     [self.currentMenuButton.menuItems addObject:menuItem];
     [menuItem release];
 }
@@ -694,16 +696,16 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     for (NSButton *button in self.buttons) {
         if (button.state == NSControlStateValueOn) {
             if (@available(macOS 10.14, *)) {
-                [button.layer setBackgroundColor:[[[NSColor lightGrayColor] colorWithAlphaComponent:0.15] CGColor]];
                 [button setWantsLayer:YES];
+                [button.layer setBackgroundColor:[[[NSColor lightGrayColor] colorWithAlphaComponent:0.15] CGColor]];
             } else {
-                button.showsBorderOnlyWhileMouseInside = YES;
+                button.showsBorderOnlyWhileMouseInside = NO;
             }
         } else {
             if (@available(macOS 10.14, *)) {
                 [button.layer setBackgroundColor:Nil];
             } else {
-                button.showsBorderOnlyWhileMouseInside = NO;
+                button.showsBorderOnlyWhileMouseInside = YES;
             }
         }
     }

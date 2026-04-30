@@ -44,11 +44,12 @@ void SetToolbarCallbacks(void* ctx) {
     };
 }
 
-void ToolbarModelAddButton(void* ptr, char* label, char* icon, int buttonId) {
+void ToolbarModelAddButton(void* ptr, char* label, int isSelected, char* icon, int buttonId) {
     WailsToolbarModel* model = (WailsToolbarModel*)ptr;
     NSString* nsLabel = [NSString stringWithUTF8String:label];
     NSString* nsIcon = icon ? [NSString stringWithUTF8String:icon] : nil;
-    [model addButtonWithLabel:nsLabel andIcon:nsIcon andId:buttonId];
+    BOOL sel = isSelected > 0;
+    [model addButtonWithLabel:nsLabel isSelected:sel andIcon:nsIcon andId:buttonId];
 }
 
 void ToolbarStartButtonGroup(void* ptr, char* name, int groupId) {
@@ -85,10 +86,12 @@ void ToolbarEndButtonWithMenu(void* ptr) {
     [model endButtonWithMenu];
 }
 
-void ToolbarAddMenuItem(void* ptr, char* item, int isSeparator, int itemId) {
+void ToolbarAddMenuItem(void* ptr, char* item, int isSeparator, int isSelected, int itemId) {
     WailsToolbarModel* model = (WailsToolbarModel*)ptr;
     NSString* nsItem = [NSString stringWithUTF8String:item];
-    [model addMenuItem:nsItem isSeparator:isSeparator andId:itemId];
+    BOOL sel = isSelected > 0;
+    BOOL sep = isSeparator > 0;
+    [model addMenuItem:nsItem isSeparator:sep isSelected:sel andId:itemId];
 }
 
 void ToolbarSelectMenuItem(void* ptr, int itemId) {
@@ -133,10 +136,14 @@ func setContextToolbarModel(context unsafe.Pointer, model *ToolbarModel) {
 	C.ReleaseToolbarModel(model.ptr)
 }
 
-func (m *ToolbarModel) addButton(label, icon string, buttonId int) {
+func (m *ToolbarModel) addButton(label, icon string, isSelected bool, buttonId int) {
 	cLabel := C.CString(label)
 	cIcon := C.CString(icon)
-	C.ToolbarModelAddButton(m.ptr, cLabel, cIcon, C.int(buttonId))
+	cIsSelected := C.int(0)
+	if isSelected {
+		cIsSelected = C.int(1)
+	}
+	C.ToolbarModelAddButton(m.ptr, cLabel, cIsSelected, cIcon, C.int(buttonId))
 	C.free(unsafe.Pointer(cLabel))
 	C.free(unsafe.Pointer(cIcon))
 }
@@ -173,13 +180,17 @@ func (m *ToolbarModel) endButtonWithMenu() {
 	C.ToolbarEndButtonWithMenu(m.ptr)
 }
 
-func (m *ToolbarModel) addMenuItem(item string, isSeparator bool, itemId int) {
+func (m *ToolbarModel) addMenuItem(item string, isSeparator, isSelected bool, itemId int) {
 	cItem := C.CString(item)
 	sep := 0
 	if isSeparator {
 		sep = 1
 	}
-	C.ToolbarAddMenuItem(m.ptr, cItem, C.int(sep), C.int(itemId))
+	sel := 0
+	if isSelected {
+		sel = 1
+	}
+	C.ToolbarAddMenuItem(m.ptr, cItem, C.int(sep), C.int(sel), C.int(itemId))
 	C.free(unsafe.Pointer(cItem))
 }
 

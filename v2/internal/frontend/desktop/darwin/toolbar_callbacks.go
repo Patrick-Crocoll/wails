@@ -9,12 +9,16 @@ package darwin
 */
 import "C"
 
-import "log/slog"
-
 //export GoOnButtonClicked
 func GoOnButtonClicked(buttonId C.int) {
-	slog.Debug("=========> (3) Toolbar button clicked:", slog.Int("buttonId", int(buttonId)))
-
+	if !toolbarInitialized {
+		return
+	}
+	select {
+	case toolbarButtonClickedBuffer <- int(buttonId):
+	default:
+		// IMPORTANT: drop event if nobody is draining fast enough, otherwise the UI can lock up completely
+	}
 }
 
 //export GoOnTextFieldChanged
