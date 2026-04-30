@@ -25,7 +25,7 @@ typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, char* text);
 
 @end
 
-@interface WailsToolbarView : NSView
+@interface WailsToolbarView : NSView <NSTextFieldDelegate, NSSearchFieldDelegate>
 
 @property (nonatomic, retain) WailsToolbarModel *model;
 @property (nonatomic, copy) WailsToolbarButtonHandler onButtonClicked;

@@ -2,7 +2,7 @@
 #import "WailsIconLoader.h"
 
 static const CGFloat WailsToolbarButtonHeight = 44.0;
-static const CGFloat WailsToolbarIconHeight = 36.0;
+static const CGFloat WailsToolbarIconHeight = 32.0;
 static const CGFloat WailsToolbarSpacing = 6.0;
 static const CGFloat WailsToolbarSpacerWidth = 20.0;
 
@@ -432,15 +432,15 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
         if ([item isKindOfClass:[WailsToolbarMenuButton class]]) {
             WailsToolbarMenuButton *btn = (WailsToolbarMenuButton *) item;
             NSPopUpButton *popupButton = [[NSPopUpButton alloc] init];
-            [popupButton setPullsDown:YES];
-            [popupButton setAutoresizingMask:NSViewMinXMargin];
             [popupButton setBordered:YES];
             [popupButton setBezelStyle:NSBezelStyleRegularSquare];
             [popupButton setShowsBorderOnlyWhileMouseInside:YES];
             [popupButton.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
             [popupButton addItemWithTitle:@""];
+            [popupButton setPullsDown:YES];
             NSImage *icn = [iconLoader loadIcon:btn.icon withPreferredHeight:WailsToolbarIconHeight];
             if (icn != nil) {
+                icn = [iconLoader imageWithReducedAlpha:icn fraction:0.6];
                 [[popupButton itemAtIndex:0] setImage:icn];
             }
             for (WailsToolbarMenuItem *menuItem in btn.menuItems) {
@@ -448,29 +448,30 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
                     [[popupButton menu] addItem:[NSMenuItem separatorItem]];
                 } else {
                     [popupButton addItemWithTitle:menuItem.label];
+                    NSMenuItem *nsMenuItem = [popupButton lastItem];
+                    [nsMenuItem setTag:menuItem.id];
+                    [nsMenuItem setTarget:self];
+                    [nsMenuItem setAction:@selector(toolbarMenuItemClicked:)];
+                    [nsMenuItem setState:(menuItem.isSelected ? NSControlStateValueOn : NSControlStateValueOff)];
                 }
             }
             [self.stack addArrangedSubview:popupButton];
             [popupButton release];
         } else if ([item isKindOfClass:[WailsToolbarTextField class]]) {
             WailsToolbarTextField *textFieldItem = (WailsToolbarTextField *) item;
-
             NSSearchField *textField = [[NSSearchField alloc] init];
             [textField setTag:textFieldItem.id];
-            //[textField setDelegate:self]; FIXME
+            [textField setDelegate:self];
             [textField setTarget:self];
             [textField setAction:@selector(toolbarTextFieldChanged:)];
             [textField setSendsSearchStringImmediately:YES];
             [textField setTranslatesAutoresizingMaskIntoConstraints:NO];
-
             [textField.heightAnchor constraintEqualToConstant:28.0].active = YES;
             [textField.widthAnchor constraintEqualToConstant:180.0].active = YES;
-
             if (!textFieldItem.isSearchField) {
                 NSSearchFieldCell *cell = (NSSearchFieldCell *) [textField cell];
                 [cell setSearchButtonCell:nil];
             }
-
             [self.stack addArrangedSubview:textField];
             [textField release];
         } else if ([item isKindOfClass:[WailsToolbarButton class]]) {
@@ -530,6 +531,35 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
         return;
     }
     self.onButtonClicked((int) sender.tag);
+}
+
+- (void)toolbarMenuItemClicked:(NSMenuItem *)sender {
+    NSMenu *menu = [sender menu];
+    for (NSMenuItem *item in [menu itemArray]) {
+        if ([item isSeparatorItem]) {
+            continue;
+        }
+        [item setState:(item == sender ? NSControlStateValueOn : NSControlStateValueOff)];
+    }
+    if (self.onButtonClicked == nil) {
+        return;
+    }
+    self.onButtonClicked((int) sender.tag);
+}
+
+- (void)toolbarTextFieldChanged:(NSSearchField *)sender {
+    if (self.onChangeText == nil) {
+        return;
+    }
+    self.onChangeText((int) sender.tag, (char *) [[sender stringValue] UTF8String]);
+}
+
+- (void)controlTextDidChange:(NSNotification *)notification {
+    id object = [notification object];
+    if (![object isKindOfClass:[NSSearchField class]]) {
+        return;
+    }
+    [self toolbarTextFieldChanged:(NSSearchField *) object];
 }
 
 + (BOOL)isStringEmpty:(NSString *)string {

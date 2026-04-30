@@ -7,6 +7,7 @@
 
 - (NSImage *)loadIcon:(NSString *)iconName;
 - (NSImage *)loadIcon:(NSString *)iconName withPreferredHeight:(CGFloat)height;
+- (NSImage *)imageWithReducedAlpha:(NSImage *)src fraction:(double)alpha;
 
 @end
 

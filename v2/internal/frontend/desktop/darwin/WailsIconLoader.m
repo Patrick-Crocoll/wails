@@ -31,7 +31,7 @@
         if (@available(macOS 11.0, *)) {
             NSImageSymbolConfiguration *config =
                     [NSImageSymbolConfiguration configurationWithPointSize:height
-                                                                    weight:NSFontWeightRegular
+                                                                    weight:NSFontWeightLight
                                                                      scale:NSImageSymbolScaleSmall];
             NSImage *configured = [image imageWithSymbolConfiguration:config];
             if (configured != nil) {
@@ -57,6 +57,21 @@
     [scaledImage unlockFocus];
     [scaledImage setTemplate:[image isTemplate]];
     return scaledImage;
+}
+
+- (NSImage *)imageWithReducedAlpha:(NSImage *)src fraction:(double)alpha {
+    NSImage *result = [[[NSImage alloc] initWithSize:src.size] autorelease];
+    [result lockFocus];
+    [NSGraphicsContext currentContext].compositingOperation = NSCompositingOperationSourceOver;
+    [src drawInRect:NSMakeRect(0, 0, src.size.width, src.size.height)
+           fromRect:NSZeroRect
+          operation:NSCompositingOperationSourceOver
+           fraction:alpha
+     respectFlipped:YES
+              hints:@{NSImageHintInterpolation: @(NSImageInterpolationHigh)}];
+    [result unlockFocus];
+    [result setTemplate:[src isTemplate]];
+    return result;
 }
 
 - (BOOL)isSystemIconName:(NSString *)iconName {
