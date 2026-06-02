@@ -76,12 +76,14 @@ void SidebarModelSetSelectedItem(void* ptr, int itemId) {
 void SetSidebarModel(void* ctx, void* modelPtr) {
     WailsContext* context = (WailsContext*)ctx;
     WailsSidebarDataSource* model = (WailsSidebarDataSource*)modelPtr;
-    if (context.sidebarContainer == nil || context.sidebarContainer.sidebarView == nil) {
+     if (context.sidebarContainer == nil || context.sidebarContainer.sidebarView == nil) {
         // TODO: log?
         return;
     }
-    [context.sidebarContainer.sidebarView setModel:model];
-    [context.sidebarContainer.sidebarView reloadData];  // Refresh after setting model
+    ON_MAIN_THREAD({
+        [context.sidebarContainer.sidebarView setModel:model];
+        [context.sidebarContainer.sidebarView reloadData];  // Refresh after setting model
+    });
 }
 
 void SetSidebarWidth(void* ctx, int width) {
