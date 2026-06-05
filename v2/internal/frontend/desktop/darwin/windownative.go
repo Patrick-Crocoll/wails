@@ -58,6 +58,7 @@ func (ctrl *ToolbarController) SetLabelText(element *native.ToolbarStaticElement
 	labelId := ctrl.idFor(element)
 	if labelId > 0 {
 		ctrl.model.setLabel(label, labelId)
+		refreshToolbarUi(ctrl.w.context)
 	}
 }
 
@@ -66,6 +67,7 @@ func (ctrl *ToolbarController) SelectButton(group *native.ToolbarButtonGroup, bu
 	buttonId := ctrl.idFor(button)
 	if groupId > 0 && buttonId > 0 {
 		ctrl.model.selectButtonInGroup(groupId, buttonId)
+		refreshToolbarUi(ctrl.w.context)
 	}
 }
 
@@ -74,17 +76,20 @@ func (ctrl *ToolbarController) DeSelectButton(group *native.ToolbarButtonGroup, 
 	buttonId := ctrl.idFor(button)
 	if groupId > 0 && buttonId > 0 {
 		ctrl.model.deselectButtonInGroup(groupId, buttonId)
+		refreshToolbarUi(ctrl.w.context)
 	}
 }
 
 func (ctrl *ToolbarController) SetText(field *native.ToolbarField, text string) {
-	//TODO implement me
-	panic("implement me")
+	fieldId := ctrl.idFor(field)
+	if fieldId > 0 {
+		ctrl.model.setTextInTextField(text, fieldId)
+		refreshToolbarUi(ctrl.w.context)
+	}
 }
 
-func (ctrl *ToolbarController) Clear(field *native.ToolbarField, text string) {
-	//TODO implement me
-	panic("implement me")
+func (ctrl *ToolbarController) Clear(field *native.ToolbarField) {
+	ctrl.SetText(field, "")
 }
 
 func (ctrl *ToolbarController) SelectMenuItem(menu *native.SimpleMenu, menuItem *native.SimpleMenuItem) {

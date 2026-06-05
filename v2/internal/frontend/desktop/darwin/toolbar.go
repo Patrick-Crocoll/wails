@@ -44,6 +44,15 @@ void SetToolbarCallbacks(void* ctx) {
     };
 }
 
+void ToolbarRefreshUi(void* ctx) {
+    WailsContext* context = (WailsContext*)ctx;
+    if (context.toolbar == nil) {
+        // TODO: log?
+        return;
+    }
+    [context.toolbar refreshUi];
+}
+
 void ToolbarModelAddButton(void* ptr, char* label, int isSelected, char* icon, int buttonId) {
     WailsToolbarModel* model = (WailsToolbarModel*)ptr;
     NSString* nsLabel = [NSString stringWithUTF8String:label];
@@ -125,6 +134,12 @@ void ToolbarAddTextField(void* ptr, bool isSearchField, int fieldId) {
     [model addTextField:isSearchField withId:fieldId];
 }
 
+void ToolbarSetTextInTextField(void* ptr, char* text, int fieldId) {
+    WailsToolbarModel* model = (WailsToolbarModel*)ptr;
+    NSString* nsText = [NSString stringWithUTF8String:text];
+    [model setTextInTextField:nsText withId:fieldId];
+}
+
 */
 import "C"
 import (
@@ -150,6 +165,10 @@ func setContextToolbarModel(context unsafe.Pointer, model *ToolbarModel) {
 	// We pass ownership of the model to the objective-c class, so we call release
 	// to decrease the reference counter. Now we are not the owners of the model anymore.
 	C.ReleaseToolbarModel(model.ptr)
+}
+
+func refreshToolbarUi(context unsafe.Pointer) {
+	C.ToolbarRefreshUi(context)
 }
 
 func (m *ToolbarModel) addButton(label, icon string, isSelected bool, buttonId int) {
@@ -234,4 +253,10 @@ func (m *ToolbarModel) addSpacer() {
 
 func (m *ToolbarModel) addTextField(isSearchField bool, fieldId int) {
 	C.ToolbarAddTextField(m.ptr, C.bool(isSearchField), C.int(fieldId))
+}
+
+func (m *ToolbarModel) setTextInTextField(text string, fieldId int) {
+	cText := C.CString(text)
+	C.ToolbarSetTextInTextField(m.ptr, cText, C.int(fieldId))
+	C.free(unsafe.Pointer(cText))
 }

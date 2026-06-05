@@ -86,7 +86,7 @@ type ToolbarControl interface {
 	SelectButton(group *ToolbarButtonGroup, button *ToolbarButton)
 	DeSelectButton(group *ToolbarButtonGroup, button *ToolbarButton)
 	SetText(field *ToolbarField, text string)
-	Clear(field *ToolbarField, text string)
+	Clear(field *ToolbarField)
 	SelectMenuItem(menu *SimpleMenu, menuItem *SimpleMenuItem)
 }
 
