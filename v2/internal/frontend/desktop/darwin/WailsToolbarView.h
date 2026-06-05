@@ -15,13 +15,17 @@ typedef void (^WailsToolbarTextFieldChangeHandler)(int fieldId, char* text);
 - (void)startButtonGroupWidthName:(NSString *)name andId:(int)groupId;
 - (void)endButtonGroup;
 - (void)selectButtonInGroup:(int)groupId button:(int)buttonId;
+- (void)selectButtonInGroup:(int)groupId button:(int)buttonId exclusive:(BOOL)exclusive;
+- (void)deselectButtonInGroup:(int)groupId button:(int)buttonId;
 - (void)addLabel:(NSString *)label withId:(int)labelId;
+- (void)setLabel:(NSString *)label withId:(int)labelId;
 - (void)startButtonWithMenu:(NSString *)label andIcon:(NSString *)icon andId:(int)buttonId;
 - (void)endButtonWithMenu;
 - (void)addMenuItem:(NSString *)item isSeparator:(BOOL)separator isSelected:(BOOL)selected andId:(int)itemId;
 - (void)selectMenuItem:(int)itemId;
 - (void)addSpacer;
 - (void)addTextField:(BOOL)isSearchField withId:(int)fieldId;
+- (void)setTextInTextField:(NSString *)text withId:(int)fieldId;
 
 @end
 

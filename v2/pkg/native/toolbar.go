@@ -87,6 +87,7 @@ type ToolbarControl interface {
 	DeSelectButton(group *ToolbarButtonGroup, button *ToolbarButton)
 	SetText(field *ToolbarField, text string)
 	Clear(field *ToolbarField, text string)
+	SelectMenuItem(menu *SimpleMenu, menuItem *SimpleMenuItem)
 }
 
 type ToolbarControlHandler func(ctrl ToolbarControl)

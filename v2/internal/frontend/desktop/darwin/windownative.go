@@ -54,6 +54,55 @@ type ToolbarController struct {
 	idCounter int
 }
 
+func (ctrl *ToolbarController) SetLabelText(element *native.ToolbarStaticElement, label string) {
+	labelId := ctrl.idFor(element)
+	if labelId > 0 {
+		ctrl.model.setLabel(label, labelId)
+	}
+}
+
+func (ctrl *ToolbarController) SelectButton(group *native.ToolbarButtonGroup, button *native.ToolbarButton) {
+	groupId := ctrl.idFor(group)
+	buttonId := ctrl.idFor(button)
+	if groupId > 0 && buttonId > 0 {
+		ctrl.model.selectButtonInGroup(groupId, buttonId)
+	}
+}
+
+func (ctrl *ToolbarController) DeSelectButton(group *native.ToolbarButtonGroup, button *native.ToolbarButton) {
+	groupId := ctrl.idFor(group)
+	buttonId := ctrl.idFor(button)
+	if groupId > 0 && buttonId > 0 {
+		ctrl.model.deselectButtonInGroup(groupId, buttonId)
+	}
+}
+
+func (ctrl *ToolbarController) SetText(field *native.ToolbarField, text string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctrl *ToolbarController) Clear(field *native.ToolbarField, text string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ctrl *ToolbarController) SelectMenuItem(menu *native.SimpleMenu, menuItem *native.SimpleMenuItem) {
+	itemId := ctrl.idFor(menuItem)
+	if itemId > 0 {
+		ctrl.model.selectMenuItem(itemId)
+	}
+}
+
+func (ctrl *ToolbarController) idFor(item native.ToolbarItem) int {
+	for id, existing := range ctrl.items {
+		if existing == item {
+			return id
+		}
+	}
+	return -1
+}
+
 func (w *Window) setupToolbar(toolbar *native.Toolbar) {
 	if toolbar == nil {
 		return
@@ -62,6 +111,9 @@ func (w *Window) setupToolbar(toolbar *native.Toolbar) {
 	addToolbarElements(ctrl, toolbar.Elements)
 	setContextToolbarModel(w.context, ctrl.model)
 	setToolbarCallbacks(w.context)
+	if toolbar.OnControlReady != nil {
+		toolbar.OnControlReady(ctrl)
+	}
 }
 
 func getToolbarController(w *Window) (toolbarController *ToolbarController) {

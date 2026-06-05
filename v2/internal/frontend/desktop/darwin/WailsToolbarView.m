@@ -62,23 +62,41 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 @interface WailsToolbarTextField : WailsToolbarItem
 
 @property(nonatomic, assign) BOOL isSearchField;
+@property(nonatomic, retain) NSString *text;
 
 @end
 
 @implementation WailsToolbarTextField
 
 @synthesize isSearchField;
+@synthesize text;
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         self->isSearchField = NO;
+        self->text = nil;
     }
     return self;
 }
 
 - (void)dealloc {
     [super dealloc];
+}
+
+- (NSSearchField *)toSearchField {
+    NSSearchField *textField = [[NSSearchField alloc] init];
+    [textField setTag:self.id];
+    [textField setAction:@selector(toolbarTextFieldChanged:)];
+    [textField setSendsSearchStringImmediately:YES];
+    [textField setTranslatesAutoresizingMaskIntoConstraints:NO];
+    [textField.heightAnchor constraintEqualToConstant:28.0].active = YES;
+    [textField.widthAnchor constraintEqualToConstant:180.0].active = YES;
+    if (!self.isSearchField) {
+        NSSearchFieldCell *cell = (NSSearchFieldCell *) [textField cell];
+        [cell setSearchButtonCell:nil];
+    }
+    return textField;
 }
 
 @end
@@ -110,6 +128,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 // returns a UI button with from this definition of a button.
 - (NSButton *)toImageButton:(WailsIconLoader *)iconLoader {
     NSButton *button = [[NSButton alloc] init];
+    [button setTag:self.id];
     [button setBordered:YES];
     [button setBezelStyle:NSBezelStyleRegularSquare];
     [button setShowsBorderOnlyWhileMouseInside:YES];
@@ -120,7 +139,6 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
         [button setImage:icn];
     }
     [button setTitle:@""];
-    [button setTag:self.id];
     return button;
 }
 
@@ -148,6 +166,35 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 - (void)dealloc {
     [menuItems release];
     [super dealloc];
+}
+
+- (NSPopUpButton *)toPopUpButton:(WailsIconLoader *)iconLoader withTarget:(id)target {
+    NSPopUpButton *popupButton = [[NSPopUpButton alloc] init];
+    [popupButton setTag:self.id];
+    [popupButton setBordered:YES];
+    [popupButton setBezelStyle:NSBezelStyleRegularSquare];
+    [popupButton setShowsBorderOnlyWhileMouseInside:YES];
+    [popupButton.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
+    [popupButton addItemWithTitle:@""];
+    [popupButton setPullsDown:YES];
+    NSImage *icn = [iconLoader loadIcon:self.icon withPreferredHeight:WailsToolbarIconHeight];
+    if (icn != nil) {
+        icn = [iconLoader imageWithReducedAlpha:icn fraction:0.6];
+        [[popupButton itemAtIndex:0] setImage:icn];
+    }
+    for (WailsToolbarMenuItem *menuItem in self.menuItems) {
+        if (menuItem.isSeparator) {
+            [[popupButton menu] addItem:[NSMenuItem separatorItem]];
+        } else {
+            [popupButton addItemWithTitle:menuItem.label];
+            NSMenuItem *nsMenuItem = [popupButton lastItem];
+            [nsMenuItem setTag:menuItem.id];
+            [nsMenuItem setTarget:target];
+            [nsMenuItem setAction:@selector(toolbarMenuItemClicked:)];
+            [nsMenuItem setState:(menuItem.isSelected ? NSControlStateValueOn : NSControlStateValueOff)];
+        }
+    }
+    return popupButton;
 }
 
 @end
@@ -184,6 +231,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 @property(nonatomic, retain) NSMutableArray<WailsToolbarItem *> *items;
 @property(readonly, retain) WailsToolbarButtonGroup *currentGroup;
 @property(readonly, retain) WailsToolbarMenuButton *currentMenuButton;
+@property(nonatomic, retain) NSMutableArray<NSNumber *> *needsRefresh;
 
 @end
 
@@ -192,11 +240,13 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 @synthesize items;
 @synthesize currentGroup;
 @synthesize currentMenuButton;
+@synthesize needsRefresh;
 
 - (instancetype)init {
     self = [super init];
     if (self) {
         self.items = [[NSMutableArray < WailsToolbarItem * > alloc] init];
+        self.needsRefresh = [[NSMutableArray<NSNumber *> alloc] init];
         self->currentGroup = nil;
         self->currentMenuButton = nil;
     }
@@ -205,9 +255,26 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 
 - (void)dealloc {
     [items release];
+    [needsRefresh release];
     [currentGroup release];
     [currentMenuButton release];
     [super dealloc];
+}
+
+- (void)addNeedsRefresh:(int)itemId {
+    NSNumber *rebuildFlag = @(-1);
+    if ([self.needsRefresh containsObject:rebuildFlag]) {
+        return;
+    }
+    NSNumber *refreshId = @(itemId);
+    if (itemId == -1) {
+        [self.needsRefresh removeAllObjects];
+        [self.needsRefresh addObject:refreshId];
+        return;
+    }
+    if (![self.needsRefresh containsObject:refreshId]) {
+        [self.needsRefresh addObject:refreshId];
+    }
 }
 
 - (void)addButtonWithLabel:(NSString *)label isSelected:(BOOL)selected andIcon:(NSString *)icon andId:(int)buttonId {
@@ -244,6 +311,10 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 }
 
 - (void)selectButtonInGroup:(int)groupId button:(int)buttonId {
+    [self selectButtonInGroup:groupId button:buttonId exclusive:YES];
+}
+
+- (void)selectButtonInGroup:(int)groupId button:(int)buttonId exclusive:(BOOL)exclusive {
     for (WailsToolbarItem *item in self.items) {
         if (![item isKindOfClass:[WailsToolbarButtonGroup class]] || item.id != groupId) {
             continue;
@@ -251,9 +322,38 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
         WailsToolbarButtonGroup *group = (WailsToolbarButtonGroup *) item;
         for (WailsToolbarButton *button in group.buttons) {
             if (button.id == buttonId) {
+                if (!button.isSelected) {
+                    [self addNeedsRefresh:group.id];
+                    [self addNeedsRefresh:buttonId];
+                }
                 button.isSelected = YES;
             } else {
+                if (exclusive) {
+                    if (button.isSelected) {
+                        [self addNeedsRefresh:group.id];
+                        [self addNeedsRefresh:buttonId];
+                    }
+                    button.isSelected = NO;
+                }
+            }
+        }
+    }
+}
+
+- (void)deselectButtonInGroup:(int)groupId button:(int)buttonId {
+    for (WailsToolbarItem *item in self.items) {
+        if (![item isKindOfClass:[WailsToolbarButtonGroup class]] || item.id != groupId) {
+            continue;
+        }
+        WailsToolbarButtonGroup *group = (WailsToolbarButtonGroup *) item;
+        for (WailsToolbarButton *button in group.buttons) {
+            if (button.id == buttonId) {
+                if (button.isSelected) {
+                    [self addNeedsRefresh:group.id];
+                    [self addNeedsRefresh:buttonId];
+                }
                 button.isSelected = NO;
+                return;
             }
         }
     }
@@ -265,6 +365,24 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     item.id = labelId;
     [self.items addObject:item];
     [item release];
+}
+
+- (void)setLabel:(NSString *)label withId:(int)labelId {
+    // (1) see if we have a label with this id. If not: add it, else set the label string
+    for (WailsToolbarItem *item in self.items) {
+        if (![item isKindOfClass:[WailsToolbarItem class]] || item.id != labelId) {
+            continue;
+        }
+        WailsToolbarItem *labelItem = (WailsToolbarItem *) item;
+        if (labelItem.label != label) {
+            [self addNeedsRefresh:labelId];
+        }
+        labelItem.label = label;
+        return;
+    }
+    // (2) we did not find a label with this id -> we add a new one:
+    [self addLabel:label withId:labelId];
+    [self addNeedsRefresh:-1];
 }
 
 - (void)startButtonWithMenu:(NSString *)label andIcon:(NSString *)icon andId:(int)buttonId {
@@ -307,8 +425,14 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
         WailsToolbarMenuButton *menuButton = (WailsToolbarMenuButton *) item;
         for (WailsToolbarMenuItem *menuItem in menuButton.menuItems) {
             if (menuItem.id == itemId) {
+                if (!menuItem.isSelected) {
+                    [self addNeedsRefresh:itemId];
+                }
                 menuItem.isSelected = YES;
             } else {
+                if (menuItem.isSelected) {
+                    [self addNeedsRefresh:itemId];
+                }
                 menuItem.isSelected = NO;
             }
         }
@@ -337,6 +461,20 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     [textField release];
 }
 
+- (void)setTextInTextField:(NSString *)text withId:(int)fieldId {
+    for (WailsToolbarItem *item in self.items) {
+        if (![item isKindOfClass:[WailsToolbarTextField class]] || item.id != fieldId) {
+            continue;
+        }
+        WailsToolbarTextField *tfItem = (WailsToolbarTextField *) item;
+        if (tfItem.text != text) {
+            [self addNeedsRefresh:fieldId];
+        }
+        tfItem.text = text;
+        return;
+    }
+}
+
 @end
 
 @interface WailsToolbarView ()
@@ -353,11 +491,13 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 @property(nonatomic, retain) NSTrackingArea *trackingArea; // for highlight of the View
 @property(nonatomic, assign) id target;
 @property(nonatomic, assign) SEL action;
+@property(nonatomic, assign) int groupId;
 
 - (instancetype)initWithButtonGroup:(WailsToolbarButtonGroup *)group
                          iconLoader:(WailsIconLoader *)iconLoader
                              target:(id)target
                              action:(SEL)action;
+- (void)refreshUi:(NSArray<NSNumber *> *)needsRefresh buttonGroup:(WailsToolbarButtonGroup *)group;
 
 @end
 
@@ -421,11 +561,31 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 }
 
 - (void)setModel:(WailsToolbarModel *)newModel {
-    if (_model == newModel) {
+    if (newModel == nil) {
+        return; // We ignore this for now!
+    }
+    if (_model == nil) {
+        // First time we set a model: We have to initialize the toolbar
+        _model = [newModel retain];
+        [self initToolbar];
         return;
     }
-    [_model release];
-    _model = [newModel retain];
+    if (_model == newModel && ![newModel.needsRefresh containsObject:@(-1)]) {
+        // It is the exact same model, and the flag for rebuilding is not set -> ignore
+        return;
+    }
+    if (_model != newModel) {
+        // New model: release the old one and then retain the new one
+        [_model release];
+        _model = [newModel retain];
+    }
+    // rebuild the toolbar
+    NSArray<NSView *> *arrangedSubviews = [[self.stack.arrangedSubviews copy] autorelease];
+    for (NSView *view in arrangedSubviews) {
+        [self.stack removeArrangedSubview:view];
+        [view removeFromSuperview];
+    }
+    self.firstStretchSpacer = nil;
     [self initToolbar];
 }
 
@@ -433,47 +593,14 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     for (WailsToolbarItem *item in self.model.items) {
         if ([item isKindOfClass:[WailsToolbarMenuButton class]]) {
             WailsToolbarMenuButton *btn = (WailsToolbarMenuButton *) item;
-            NSPopUpButton *popupButton = [[NSPopUpButton alloc] init];
-            [popupButton setBordered:YES];
-            [popupButton setBezelStyle:NSBezelStyleRegularSquare];
-            [popupButton setShowsBorderOnlyWhileMouseInside:YES];
-            [popupButton.heightAnchor constraintEqualToConstant:WailsToolbarButtonHeight].active = YES;
-            [popupButton addItemWithTitle:@""];
-            [popupButton setPullsDown:YES];
-            NSImage *icn = [iconLoader loadIcon:btn.icon withPreferredHeight:WailsToolbarIconHeight];
-            if (icn != nil) {
-                icn = [iconLoader imageWithReducedAlpha:icn fraction:0.6];
-                [[popupButton itemAtIndex:0] setImage:icn];
-            }
-            for (WailsToolbarMenuItem *menuItem in btn.menuItems) {
-                if (menuItem.isSeparator) {
-                    [[popupButton menu] addItem:[NSMenuItem separatorItem]];
-                } else {
-                    [popupButton addItemWithTitle:menuItem.label];
-                    NSMenuItem *nsMenuItem = [popupButton lastItem];
-                    [nsMenuItem setTag:menuItem.id];
-                    [nsMenuItem setTarget:self];
-                    [nsMenuItem setAction:@selector(toolbarMenuItemClicked:)];
-                    [nsMenuItem setState:(menuItem.isSelected ? NSControlStateValueOn : NSControlStateValueOff)];
-                }
-            }
+            NSPopUpButton *popupButton = [btn toPopUpButton:self.iconLoader withTarget:self];
             [self.stack addArrangedSubview:popupButton];
             [popupButton release];
         } else if ([item isKindOfClass:[WailsToolbarTextField class]]) {
             WailsToolbarTextField *textFieldItem = (WailsToolbarTextField *) item;
-            NSSearchField *textField = [[NSSearchField alloc] init];
-            [textField setTag:textFieldItem.id];
+            NSSearchField *textField = [textFieldItem toSearchField];
             [textField setDelegate:self];
             [textField setTarget:self];
-            [textField setAction:@selector(toolbarTextFieldChanged:)];
-            [textField setSendsSearchStringImmediately:YES];
-            [textField setTranslatesAutoresizingMaskIntoConstraints:NO];
-            [textField.heightAnchor constraintEqualToConstant:28.0].active = YES;
-            [textField.widthAnchor constraintEqualToConstant:180.0].active = YES;
-            if (!textFieldItem.isSearchField) {
-                NSSearchFieldCell *cell = (NSSearchFieldCell *) [textField cell];
-                [cell setSearchButtonCell:nil];
-            }
             [self.stack addArrangedSubview:textField];
             [textField release];
         } else if ([item isKindOfClass:[WailsToolbarButton class]]) {
@@ -486,6 +613,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
                              iconLoader:self.iconLoader
                                  target:self
                                  action:@selector(toolbarButtonClicked:)];
+            groupView.groupId = grp.id;
             [self.stack addArrangedSubview:groupView];
             [groupView release];
         } else if ([item isKindOfClass:[WailsToolbarItem class]]) {
@@ -509,6 +637,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
                     [spacer release];
                 } else {
                     NSTextField *label = [NSTextField labelWithString:(basicItem.label != nil ? basicItem.label : @"")];
+                    [label setTag:basicItem.id];
                     [label sizeToFit];
                     [self.stack addArrangedSubview:label];
                     [label release];
@@ -516,6 +645,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
             }
         }
     }
+    [self.model.needsRefresh removeAllObjects];
 }
 
 - (void)addButton:(WailsToolbarButton *)btn
@@ -523,9 +653,112 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     NSButton *nsButton = [btn toImageButton:self.iconLoader];
     [nsButton setTarget:self];
     [nsButton setAction:@selector(toolbarButtonClicked:)];
-    [self.stack addArrangedSubview:nsButton];
     [nsButton setButtonType:NSButtonTypeMomentaryLight];
+    [self.stack addArrangedSubview:nsButton];
     [nsButton release];
+}
+
+- (void)refreshUi {
+    if ([self.model.needsRefresh containsObject:@(-1)]) {
+        [self setModel:self.model];
+        return;
+    }
+    for (NSNumber *refreshNumber in self.model.needsRefresh) {
+        int refreshId = [refreshNumber intValue];
+        for (WailsToolbarItem *item in self.model.items) {
+            // (1) Menu item (in popup menu)
+            if ([item isKindOfClass:[WailsToolbarMenuButton class]]) {
+                WailsToolbarMenuButton *menuButton = (WailsToolbarMenuButton *) item;
+                for (WailsToolbarMenuItem *menuItem in menuButton.menuItems) {
+                    if (menuItem.id != refreshId) {
+                        continue;
+                    }
+                    NSMenuItem *nsMenuItem = [self toolbarMenuItemWithId:menuItem.id];
+                    if (nsMenuItem == nil) {
+                        continue;
+                    }
+                    NSMenu *menu = [nsMenuItem menu];
+                    for (NSMenuItem *itemInMenu in [menu itemArray]) {
+                        if ([itemInMenu isSeparatorItem]) {
+                            continue;
+                        }
+                        [itemInMenu setState:((int) [itemInMenu tag] == menuItem.id
+                                ? NSControlStateValueOn
+                                : NSControlStateValueOff)];
+                    }
+                }
+            } else if ([item isKindOfClass:[WailsToolbarTextField class]]) {
+                // (1) text field
+                WailsToolbarTextField *textFieldItem = (WailsToolbarTextField *) item;
+                if (textFieldItem.id != refreshId) {
+                    continue;
+                }
+                NSControl *control = [self toolbarControlWithId:textFieldItem.id];
+                if (![control isKindOfClass:[NSSearchField class]]) {
+                    continue;
+                }
+                NSSearchField *textField = (NSSearchField *) control;
+                NSString *text = textFieldItem.text != nil ? textFieldItem.text : @"";
+                if (![[textField stringValue] isEqualToString:text]) {
+                    [textField setStringValue:text];
+                }
+            } else if ([item isKindOfClass:[WailsToolbarItem class]]) {
+                // (3) label
+                WailsToolbarItem *labelItem = item;
+                if (labelItem.id != refreshId) {
+                    continue;
+                }
+                NSControl *control = [self toolbarControlWithId:labelItem.id];
+                if (![control isKindOfClass:[NSTextField class]]) {
+                    continue;
+                }
+                NSTextField *label = (NSTextField *) control;
+                NSString *text = labelItem.label != nil ? labelItem.label : @"";
+                if (![[label stringValue] isEqualToString:text]) {
+                    [label setStringValue:text];
+                    [label sizeToFit];
+                }
+            } else if ([item isKindOfClass:[WailsToolbarButtonGroup class]]) {
+                // (4) button group (selected button in group)
+                WailsToolbarButtonGroup *group = (WailsToolbarButtonGroup *) item;
+                for (NSView *view in self.stack.arrangedSubviews) {
+                   if (![view isKindOfClass:[WailsToolbarButtonGroupView class]]) {
+                       continue;
+                   }
+                   WailsToolbarButtonGroupView *groupView = (WailsToolbarButtonGroupView *) view;
+                   [groupView refreshUi:self.model.needsRefresh buttonGroup:group];
+                }
+           }
+        }
+    }
+    [self.model.needsRefresh removeAllObjects];
+}
+
+- (NSControl *)toolbarControlWithId:(int)itemId {
+    for (NSView *view in self.stack.arrangedSubviews) {
+        if ([view isKindOfClass:[NSControl class]] && [(NSControl *) view tag] == itemId) {
+            return (NSControl *) view;
+        }
+    }
+    return nil;
+}
+
+- (NSMenuItem *)toolbarMenuItemWithId:(int)itemId {
+    for (NSView *view in self.stack.arrangedSubviews) {
+        if (![view isKindOfClass:[NSPopUpButton class]]) {
+            continue;
+        }
+        NSPopUpButton *popupButton = (NSPopUpButton *) view;
+        for (NSMenuItem *menuItem in [[popupButton menu] itemArray]) {
+            if ([menuItem isSeparatorItem]) {
+                continue;
+            }
+            if ((int) [menuItem tag] == itemId) {
+                return menuItem;
+            }
+        }
+    }
+    return nil;
 }
 
 - (void)toolbarButtonClicked:(NSButton *)sender {
@@ -653,6 +886,31 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     [trackingArea release];
     [buttons release];
     [super dealloc];
+}
+
+- (void)refreshUi:(NSArray<NSNumber *> *)needsRefresh buttonGroup:(WailsToolbarButtonGroup *)group {
+    BOOL didUpdate = NO;
+    for (WailsToolbarButton *buttonModel in group.buttons) {
+        if (![needsRefresh containsObject:@(buttonModel.id)]) {
+            continue;
+        }
+        for (NSButton *button in self.buttons) {
+            if ((int) [button tag] != buttonModel.id) {
+                continue;
+            }
+            NSControlStateValue newState = buttonModel.isSelected
+                    ? NSControlStateValueOn
+                    : NSControlStateValueOff;
+            if ([button state] != newState) {
+                [button setState:newState];
+                didUpdate = YES;
+            }
+            break;
+        }
+    }
+    if (didUpdate) {
+        [self highlightSelectedButton];
+    }
 }
 
 - (NSSize)intrinsicContentSize {

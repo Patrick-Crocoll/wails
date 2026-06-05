@@ -63,15 +63,31 @@ void ToolbarEndButtonGroup(void* ptr) {
     [model endButtonGroup];
 }
 
-void ToolbarSelectButtonInGroup(void* ptr, int groupId, int buttonId) {
+void ToolbarSelectButtonInGroupExclusive(void* ptr, int groupId, int buttonId) {
     WailsToolbarModel* model = (WailsToolbarModel*)ptr;
     [model selectButtonInGroup:groupId button:buttonId];
+}
+
+void ToolbarSelectButtonInGroup(void* ptr, int groupId, int buttonId) {
+    WailsToolbarModel* model = (WailsToolbarModel*)ptr;
+    [model selectButtonInGroup:groupId button:buttonId exclusive:NO];
+}
+
+void ToolbarDeselectButtonInGroup(void* ptr, int groupId, int buttonId) {
+    WailsToolbarModel* model = (WailsToolbarModel*)ptr;
+    [model deselectButtonInGroup:groupId button:buttonId];
 }
 
 void ToolbarAddLabel(void* ptr, char* label, int labelId) {
     WailsToolbarModel* model = (WailsToolbarModel*)ptr;
     NSString* nsLabel = [NSString stringWithUTF8String:label];
     [model addLabel:nsLabel withId:labelId];
+}
+
+void ToolbarSetLabel(void* ptr, char* label, int labelId) {
+    WailsToolbarModel* model = (WailsToolbarModel*)ptr;
+    NSString* nsLabel = [NSString stringWithUTF8String:label];
+    [model setLabel:nsLabel withId:labelId];
 }
 
 void ToolbarStartButtonWithMenu(void* ptr, char* label, char* icon, int buttonId) {
@@ -158,13 +174,27 @@ func (m *ToolbarModel) endButtonGroup() {
 	C.ToolbarEndButtonGroup(m.ptr)
 }
 
+func (m *ToolbarModel) selectButtonInGroupExclusive(groupId, buttonId int) {
+	C.ToolbarSelectButtonInGroupExclusive(m.ptr, C.int(groupId), C.int(buttonId))
+}
+
 func (m *ToolbarModel) selectButtonInGroup(groupId, buttonId int) {
 	C.ToolbarSelectButtonInGroup(m.ptr, C.int(groupId), C.int(buttonId))
+}
+
+func (m *ToolbarModel) deselectButtonInGroup(groupId, buttonId int) {
+	C.ToolbarDeselectButtonInGroup(m.ptr, C.int(groupId), C.int(buttonId))
 }
 
 func (m *ToolbarModel) addLabel(label string, labelId int) {
 	cLabel := C.CString(label)
 	C.ToolbarAddLabel(m.ptr, cLabel, C.int(labelId))
+	C.free(unsafe.Pointer(cLabel))
+}
+
+func (m *ToolbarModel) setLabel(label string, labelId int) {
+	cLabel := C.CString(label)
+	C.ToolbarSetLabel(m.ptr, cLabel, C.int(labelId))
 	C.free(unsafe.Pointer(cLabel))
 }
 
