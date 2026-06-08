@@ -5,6 +5,7 @@ static const CGFloat WailsToolbarButtonHeight = 44.0;
 static const CGFloat WailsToolbarIconHeight = 32.0;
 static const CGFloat WailsToolbarSpacing = 6.0;
 static const CGFloat WailsToolbarSpacerWidth = 20.0;
+static const CGFloat WailsToolbarMinimumPadding = 8.0;
 
 // A toolbar item: Button, ButtonGroup, Button with menu, TextField
 @interface WailsToolbarItem : NSObject
@@ -495,6 +496,9 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 @property(nonatomic, retain) WailsIconLoader *iconLoader;
 @property(nonatomic, retain) NSStackView *stack;
 @property(nonatomic, retain) NSView *firstStretchSpacer;
+// Needed to avoid overlap with the macOS "traffic-light" buttons
+@property(nonatomic, retain) NSView *trafficLightSpacer;
+@property(nonatomic, retain) NSLayoutConstraint *trafficLightSpacerWidthConstraint;
 
 @end
 
@@ -557,8 +561,8 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
         self.stack.translatesAutoresizingMaskIntoConstraints = NO;
         [self addSubview:self.stack];
         [NSLayoutConstraint activateConstraints:@[
-                [self.stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:8.0],
-                [self.stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8.0],
+                [self.stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor], // This is set by trafficLightSpacer
+                [self.stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:(-1.0*WailsToolbarMinimumPadding)],
                 [self.stack.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]
         ]];
     }
@@ -603,6 +607,9 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
 }
 
 - (void)initToolbar {
+    // This is the element in the toolbar (a dummy element), which is used to avoid coalitions between the other
+    // toolbar elements and the default macOS window elements (traffic-light buttons)
+    [self addTrafficLightSpacer];
     for (WailsToolbarItem *item in self.model.items) {
         if ([item isKindOfClass:[WailsToolbarMenuButton class]]) {
             WailsToolbarMenuButton *btn = (WailsToolbarMenuButton *) item;
@@ -658,7 +665,19 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
             }
         }
     }
+    [self updateTrafficLightSpacer]; // make sure sour spacer has the correct size
     [self.model.needsRefresh removeAllObjects];
+}
+
+- (void)addTrafficLightSpacer {
+    NSView *spacer = [[NSView alloc] initWithFrame:NSZeroRect];
+    [spacer setTranslatesAutoresizingMaskIntoConstraints:NO];
+    self.trafficLightSpacer = spacer;
+    self.trafficLightSpacerWidthConstraint =
+        [spacer.widthAnchor constraintEqualToConstant:WailsToolbarMinimumPadding];
+    self.trafficLightSpacerWidthConstraint.active = YES;
+    [self.stack addArrangedSubview:spacer];
+    [spacer release];
 }
 
 - (void)addButton:(WailsToolbarButton *)btn
@@ -669,6 +688,66 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     [nsButton setButtonType:NSButtonTypeMomentaryLight];
     [self.stack addArrangedSubview:nsButton];
     [nsButton release];
+}
+
+- (void)viewDidMoveToWindow {
+    [super viewDidMoveToWindow];
+    [self updateTrafficLightSpacer];
+}
+
+- (void)layout {
+    [super layout];
+    [self updateTrafficLightSpacer];
+}
+
+// make sure the default macOS window buttons (the "traffic-light" buttons) do not overlap with any element of this
+// toolbar
+- (void)updateTrafficLightSpacer {
+    if (self.window == nil || self.trafficLightSpacerWidthConstraint == nil) {
+        return;
+    }
+    // (1) If we are in full screen, the default macOS buttons are not shown, so no need to do anything
+    if (([self.window styleMask] & NSWindowStyleMaskFullScreen) == NSWindowStyleMaskFullScreen) {
+        self.trafficLightSpacerWidthConstraint.constant = WailsToolbarMinimumPadding;
+        return;
+    }
+    // (2) get the macOS buttons
+    NSRect trafficLightBounds = NSZeroRect;
+    BOOL foundButton = NO;
+    NSArray<NSNumber *> *buttonTypes = @[
+            @(NSWindowCloseButton),
+            @(NSWindowMiniaturizeButton),
+            @(NSWindowZoomButton)
+    ];
+    for (NSNumber *buttonType in buttonTypes) {
+        NSButton *button = [self.window standardWindowButton:[buttonType integerValue]];
+        if (button == nil || [button isHidden] || button.superview == nil) {
+            continue;
+        }
+        NSRect buttonFrameInToolbar = [button.superview convertRect:button.frame toView:self];
+        if (!foundButton) {
+            trafficLightBounds = buttonFrameInToolbar;
+            foundButton = YES;
+        } else {
+            trafficLightBounds = NSUnionRect(trafficLightBounds, buttonFrameInToolbar);
+        }
+    }
+    // (3) No macOS buttons found: Nothing can overlap -> minimum padding
+    if (!foundButton) {
+        self.trafficLightSpacerWidthConstraint.constant = WailsToolbarMinimumPadding;
+        return;
+    }
+    // (4) Now check if we actually intersect with the default macOS buttons:
+    NSRect toolbarBounds = self.bounds;
+    if (!NSIntersectsRect(toolbarBounds, trafficLightBounds)) {
+        self.trafficLightSpacerWidthConstraint.constant = WailsToolbarMinimumPadding;
+        return;
+    }
+    CGFloat neededWidth = NSMaxX(trafficLightBounds) + WailsToolbarMinimumPadding;
+    if (neededWidth < WailsToolbarMinimumPadding) {
+        neededWidth = WailsToolbarMinimumPadding;
+    }
+    self.trafficLightSpacerWidthConstraint.constant = neededWidth;
 }
 
 - (void)refreshUi {
