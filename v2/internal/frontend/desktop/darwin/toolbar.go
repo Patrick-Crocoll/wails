@@ -50,7 +50,9 @@ void ToolbarRefreshUi(void* ctx) {
         // TODO: log?
         return;
     }
-    [context.toolbar refreshUi];
+    ON_MAIN_THREAD({
+        [context.toolbar refreshUi];
+    });
 }
 
 void ToolbarModelAddButton(void* ptr, char* label, int isSelected, char* icon, int buttonId) {
@@ -143,6 +145,7 @@ void ToolbarSetTextInTextField(void* ptr, char* text, int fieldId) {
 */
 import "C"
 import (
+	"log/slog"
 	"unsafe"
 )
 
@@ -191,6 +194,7 @@ func (m *ToolbarModel) startButtonGroup(name string, groupId int) {
 
 func (m *ToolbarModel) endButtonGroup() {
 	C.ToolbarEndButtonGroup(m.ptr)
+	slog.Debug(")=================================>>>>>>>> End du button should be somwhere here!!!!")
 }
 
 func (m *ToolbarModel) selectButtonInGroupExclusive(groupId, buttonId int) {

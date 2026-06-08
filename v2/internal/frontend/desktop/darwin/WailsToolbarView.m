@@ -197,6 +197,19 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
     return popupButton;
 }
 
+- (BOOL)hasItemWithId:(int)itemId {
+    return [self getItemWithId:itemId] != nil;
+}
+
+- (WailsToolbarMenuItem *)getItemWithId:(int)itemId {
+    for (WailsToolbarMenuItem *menuItem in self.menuItems) {
+        if (!menuItem.isSeparator && menuItem.id == itemId) {
+            return menuItem;
+        }
+    }
+    return nil;
+}
+
 @end
 
 // A group of buttons that can be toggled
@@ -669,24 +682,15 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
             // (1) Menu item (in popup menu)
             if ([item isKindOfClass:[WailsToolbarMenuButton class]]) {
                 WailsToolbarMenuButton *menuButton = (WailsToolbarMenuButton *) item;
-                for (WailsToolbarMenuItem *menuItem in menuButton.menuItems) {
-                    if (menuItem.id != refreshId) {
-                        continue;
-                    }
-                    NSMenuItem *nsMenuItem = [self toolbarMenuItemWithId:menuItem.id];
-                    if (nsMenuItem == nil) {
-                        continue;
-                    }
-                    NSMenu *menu = [nsMenuItem menu];
-                    for (NSMenuItem *itemInMenu in [menu itemArray]) {
-                        if ([itemInMenu isSeparatorItem]) {
-                            continue;
-                        }
-                        [itemInMenu setState:((int) [itemInMenu tag] == menuItem.id
-                                ? NSControlStateValueOn
-                                : NSControlStateValueOff)];
-                    }
+                WailsToolbarMenuItem *menuItem = [menuButton getItemWithId:refreshId];
+                if (menuItem == nil) {
+                    continue;
                 }
+                NSMenuItem *nsMenuItem = [self toolbarMenuItemWithId:refreshId];
+                if (nsMenuItem == nil) {
+                    continue;
+                }
+                [nsMenuItem setState:([menuItem isSelected] ? NSControlStateValueOn : NSControlStateValueOff)];
             } else if ([item isKindOfClass:[WailsToolbarTextField class]]) {
                 // (1) text field
                 WailsToolbarTextField *textFieldItem = (WailsToolbarTextField *) item;
@@ -702,7 +706,17 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
                 if (![[textField stringValue] isEqualToString:text]) {
                     [textField setStringValue:text];
                 }
-            } else if ([item isKindOfClass:[WailsToolbarItem class]]) {
+            } else if ([item isKindOfClass:[WailsToolbarButtonGroup class]]) {
+                  // (4) button group (selected button in group)
+                  WailsToolbarButtonGroup *group = (WailsToolbarButtonGroup *) item;
+                  for (NSView *view in self.stack.arrangedSubviews) {
+                     if (![view isKindOfClass:[WailsToolbarButtonGroupView class]]) {
+                         continue;
+                     }
+                     WailsToolbarButtonGroupView *groupView = (WailsToolbarButtonGroupView *) view;
+                     [groupView refreshUi:self.model.needsRefresh buttonGroup:group];
+                  }
+             } else if ([item isKindOfClass:[WailsToolbarItem class]]) {
                 // (3) label
                 WailsToolbarItem *labelItem = item;
                 if (labelItem.id != refreshId) {
@@ -718,17 +732,7 @@ static const CGFloat WailsToolbarSpacerWidth = 20.0;
                     [label setStringValue:text];
                     [label sizeToFit];
                 }
-            } else if ([item isKindOfClass:[WailsToolbarButtonGroup class]]) {
-                // (4) button group (selected button in group)
-                WailsToolbarButtonGroup *group = (WailsToolbarButtonGroup *) item;
-                for (NSView *view in self.stack.arrangedSubviews) {
-                   if (![view isKindOfClass:[WailsToolbarButtonGroupView class]]) {
-                       continue;
-                   }
-                   WailsToolbarButtonGroupView *groupView = (WailsToolbarButtonGroupView *) view;
-                   [groupView refreshUi:self.model.needsRefresh buttonGroup:group];
-                }
-           }
+            }
         }
     }
     [self.model.needsRefresh removeAllObjects];

@@ -125,6 +125,7 @@ func getToolbarController(w *Window) (toolbarController *ToolbarController) {
 	initTBCOnce.Do(
 		func() {
 			toolbarController = &ToolbarController{
+				w:     w,
 				items: map[int]native.ToolbarItem{},
 				model: newToolbarModel(),
 			}
@@ -228,6 +229,7 @@ func (ctrl *ToolbarController) addToolbarButtonGroup(group *native.ToolbarButton
 	}
 	ctrl.model.startButtonGroup(group.Text, ctrl.idCounter)
 	defer ctrl.model.endButtonGroup()
+	ctrl.items[ctrl.idCounter] = group
 	ctrl.idCounter++
 	items := make([]native.ToolbarItem, len(group.Buttons))
 	for i, b := range group.Buttons {
