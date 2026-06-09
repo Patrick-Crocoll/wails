@@ -287,42 +287,13 @@ extern void didReceiveNotificationResponse(const char *jsonPayload, const char* 
 
     CGRect init = { 0,0,0,0 };
     [self.webview initWithFrame:init configuration:config];
-    // #Native: toolbar START
-    NSRect contentViewBounds = [contentView bounds];
-    NSView *stackView = [[NSView alloc] initWithFrame:contentViewBounds];
-    [stackView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-    NSView *mainAppView = self.webview;
 
-    if (withNativeToolbar) {
-        // (1) create the toolbar
-        CGFloat toolbarHeight = 52.0;
-        self.toolbar = [[WailsToolbarView alloc] initWithFrame:NSMakeRect(0, NSHeight(contentViewBounds) - toolbarHeight, NSWidth(contentViewBounds), toolbarHeight)];
-        // (2) make the webview a little bit smaller and position it below the toolbar
-        NSRect webviewFrame = NSMakeRect(0, 0, NSWidth(contentViewBounds), NSHeight(contentViewBounds) - toolbarHeight);
-        [self.webview setFrame:webviewFrame];
-        [self.webview setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-        // (3) add the toolbar to the stackview
-        [stackView addSubview:self.webview];
-        [stackView addSubview:self.toolbar];
-        mainAppView = stackView;
-    }
-
-    // #Native: toolbar END
-    // #Native: sidebar START
-    if (withNativeSidebar) {
-        WailsSidebarView *sidebar = [[WailsSidebarView alloc] initWithFrame:NSMakeRect(0, 0, 220, 500) model:nil];
-        self.sidebarContainer = [[WailsSidebarViewContainer alloc] initWithFrame:contentViewBounds sidebar:sidebar mainView:mainAppView];
-        [contentView addSubview:self.sidebarContainer];
-    } else {
-    // #Native: sidebar END
-        [contentView addSubview:mainAppView];
-        [self.webview setAutoresizingMask: NSViewWidthSizable|NSViewHeightSizable];
-        CGRect contentViewBounds = [contentView bounds];
-        [self.webview setFrame:contentViewBounds];
-    // #Native: sidebar START
-    }
-    [stackView release];
-    // #Native: sidebar END
+    // #Native: START
+    [self initContentViewSystem:contentView
+                            webView:self.webview
+                  withNativeSidebar:withNativeSidebar
+                  withNativeToolbar:withNativeToolbar];
+    // #Native: END
 
     if (webviewIsTransparent) {
         [self.webview setValue:[NSNumber numberWithBool:!webviewIsTransparent] forKey:@"drawsBackground"];
