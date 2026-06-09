@@ -7,11 +7,13 @@
 
 #import "WailsToolbarView.h"
 #import "WailsSidebarView.h"
+#import "WailsContentDialogWindow.h"
 
 NSString * const WailsDefaultContentViewKey = @"default:wails:webview";
 
 static char WailsContentHostViewKey;
 static char WailsContentViewRegistryKey;
+static char WailsDialogWindowKey;
 static const CGFloat WailsToolbarHeight = 52.0;
 
 @interface WailsContext (ContentViewsPrivate)
@@ -26,6 +28,32 @@ static const CGFloat WailsToolbarHeight = 52.0;
 
 - (NSView *)withSidebar:(NSView *)mainAppView
                  bounds:(NSRect)bounds;
+
+// Helpers for dialogs:
+
+- (WailsContentDialogWindow *)dialogWindow;
+- (void)setDialogWindow:(WailsContentDialogWindow *)dialogWindow;
+
+- (NSWindowStyleMask)dialogStyleMaskClosable:(BOOL)closable
+                                 minimizable:(BOOL)minimizable
+                               fullscreenable:(BOOL)fullscreenable;
+
+- (WailsContentDialogWindow *)createDialogWindowWithWidth:(CGFloat)width
+                                                   height:(CGFloat)height
+                                                styleMask:(NSWindowStyleMask)styleMask;
+
+- (void)configureDialogWindow:(WailsContentDialogWindow *)dialogWindow
+                        title:(NSString *)title
+                        width:(CGFloat)width
+                       height:(CGFloat)height
+                    styleMask:(NSWindowStyleMask)styleMask
+                fullscreenable:(BOOL)fullscreenable;
+
+- (void)installDialogView:(NSView *)view
+                 inWindow:(WailsContentDialogWindow *)window;
+
+- (void)showDialogWindow:(WailsContentDialogWindow *)dialogWindow
+                   modal:(BOOL)modal;
 
 @end
 
@@ -180,6 +208,159 @@ static const CGFloat WailsToolbarHeight = 52.0;
 
 - (NSView *)contentHostView {
     return objc_getAssociatedObject(self, &WailsContentHostViewKey);
+}
+
+/***** Dialogs ******/
+
+- (BOOL)openDialogForView:(NSString *)key
+                    title:(NSString *)title
+                    width:(CGFloat)width
+                   height:(CGFloat)height
+                    modal:(BOOL)modal
+                 closable:(BOOL)closable
+              minimizable:(BOOL)minimizable
+            fullscreenable:(BOOL)fullscreenable {
+    // (1) get the view we want to show in the dialog
+    if (key == nil || [key length] == 0) {
+        NSLog(@"Cannot open content view dialog without key");
+        return NO;
+    }
+    WailsContentViewRegistration *registration = [[self contentViewRegistry] registrationForKey:key];
+    if (registration == nil) {
+        NSLog(@"Cannot open content view dialog for '%@': key is not registered", key);
+        return NO;
+    }
+    if (registration.dialogViewFactory == nil) {
+        NSLog(@"Cannot open content view dialog for '%@': dialog view factory is missing", key);
+        return NO;
+    }
+    NSView *view = registration.dialogViewFactory();
+    if (view == nil) {
+        NSLog(@"Cannot open content view dialog for '%@': dialog view factory returned nil", key);
+        return NO;
+    }
+    if ([view superview] != nil) {
+        NSLog(@"Cannot open content view dialog for '%@': view is already attached to another superview", key);
+        return NO;
+    }
+    // (2) create the dialog
+    CGFloat dialogWidth = width > 0 ? width : 600.0;
+    CGFloat dialogHeight = height > 0 ? height : 400.0;
+    NSWindowStyleMask styleMask = [self dialogStyleMaskClosable:closable
+                                                    minimizable:minimizable
+                                                  fullscreenable:fullscreenable];
+    WailsContentDialogWindow *dialogWindow = [self dialogWindow];
+    if (dialogWindow == nil) {
+        // If the dialog singleton was not created yet, we do it now...
+        WailsContentDialogWindow *newDialogWindow = [self createDialogWindowWithWidth:dialogWidth
+                                                                              height:dialogHeight
+                                                                           styleMask:styleMask];
+        [self setDialogWindow:newDialogWindow];
+        [newDialogWindow release];
+        dialogWindow = [self dialogWindow];
+    }
+    if ([dialogWindow isVisible]) {
+        [self closeDialog];
+    }
+    [self configureDialogWindow:dialogWindow
+                          title:title
+                          width:dialogWidth
+                         height:dialogHeight
+                      styleMask:styleMask
+                 fullscreenable:fullscreenable];
+    // (3) add the view to the dialog
+    [self configureDialogView:view inWindow:dialogWindow];
+    if (self.mainWindow != nil) {
+        [self.mainWindow addChildWindow:dialogWindow ordered:NSWindowAbove];
+    }
+    // (4) show the dialog
+    [self showDialogWindow:dialogWindow modal:modal];
+    return YES;
+}
+
+- (void)closeDialog {
+    WailsContentDialogWindow *dialogWindow = [self dialogWindow];
+    if (dialogWindow == nil) {
+        return;
+    }
+    if (self.mainWindow != nil) {
+        [self.mainWindow removeChildWindow:dialogWindow];
+    }
+    [dialogWindow close];
+}
+
+- (WailsContentDialogWindow *)dialogWindow {
+    return objc_getAssociatedObject(self, &WailsDialogWindowKey);
+}
+
+- (void)setDialogWindow:(WailsContentDialogWindow *)dialogWindow {
+    objc_setAssociatedObject(self,
+                             &WailsDialogWindowKey,
+                             dialogWindow,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (NSWindowStyleMask)dialogStyleMaskClosable:(BOOL)closable
+                                 minimizable:(BOOL)minimizable
+                               fullscreenable:(BOOL)fullscreenable {
+    NSWindowStyleMask styleMask = NSWindowStyleMaskTitled;
+    if (closable) {
+        styleMask |= NSWindowStyleMaskClosable;
+    }
+    if (minimizable) {
+        styleMask |= NSWindowStyleMaskMiniaturizable;
+    }
+    if (fullscreenable) {
+        styleMask |= NSWindowStyleMaskResizable;
+    }
+    return styleMask;
+}
+
+- (WailsContentDialogWindow *)createDialogWindowWithWidth:(CGFloat)width
+                                                   height:(CGFloat)height
+                                                styleMask:(NSWindowStyleMask)styleMask {
+    WailsContentDialogWindow *dialogWindow = [[WailsContentDialogWindow alloc] initWithContentRect:NSMakeRect(0, 0, width, height)
+                                                                                         styleMask:styleMask
+                                                                                           backing:NSBackingStoreBuffered
+                                                                                             defer:NO];
+    [dialogWindow setReleasedWhenClosed:NO];
+    return dialogWindow;
+}
+
+- (void)configureDialogWindow:(WailsContentDialogWindow *)dialogWindow
+                        title:(NSString *)title
+                        width:(CGFloat)width
+                       height:(CGFloat)height
+                    styleMask:(NSWindowStyleMask)styleMask
+                fullscreenable:(BOOL)fullscreenable {
+    [dialogWindow setTitle:title ?: @""];
+    [dialogWindow setStyleMask:styleMask];
+    [dialogWindow setContentSize:NSMakeSize(width, height)];
+    [dialogWindow center];
+    if (fullscreenable) {
+        [dialogWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+    } else {
+        [dialogWindow setCollectionBehavior:NSWindowCollectionBehaviorDefault];
+    }
+}
+
+- (void)installDialogView:(NSView *)view
+                 inWindow:(WailsContentDialogWindow *)window {
+    NSView *contentView = [window contentView];
+    [contentView setSubviews:@[]];
+    [view setFrame:[contentView bounds]];
+    [view setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
+    [contentView addSubview:view];
+}
+
+- (void)showDialogWindow:(WailsContentDialogWindow *)dialogWindow
+                   modal:(BOOL)modal {
+    [dialogWindow makeKeyAndOrderFront:nil];
+    if (modal) {
+        dialogWindow.runningModal = YES;
+        [NSApp runModalForWindow:dialogWindow];
+        dialogWindow.runningModal = NO;
+    }
 }
 
 @end

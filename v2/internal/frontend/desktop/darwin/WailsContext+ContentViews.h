@@ -35,4 +35,15 @@ extern NSString * const WailsDefaultContentViewKey;
 - (BOOL)switchToDefaultView;
 - (BOOL)switchToView:(NSString *)key;
 
+- (BOOL)openDialogForView:(NSString *)key
+                    title:(NSString *)title
+                    width:(CGFloat)width
+                   height:(CGFloat)height
+                    modal:(BOOL)modal
+                 closable:(BOOL)closable
+              minimizable:(BOOL)minimizable
+            fullscreenable:(BOOL)fullscreenable;
+
+- (void)closeDialog;
+
 @end
