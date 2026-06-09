@@ -4,14 +4,35 @@
 
 #import <Cocoa/Cocoa.h>
 #import "WailsContext.h"
+#import "WailsContentViewRegistry.h"
+
+// Use this key to switch back to the default webView
+extern NSString * const WailsDefaultContentViewKey;
 
 @interface WailsContext (ContentViews)
+
+// INIT
 
 - (void)initContentViewSystem:(NSView *)contentView
                       webView:(NSView *)webView
             withNativeSidebar:(BOOL)withNativeSidebar
             withNativeToolbar:(BOOL)withNativeToolbar;
 
-- (NSView *)contentHostView;
+// REGISTER NEW VIEWS
+
+- (void)registerContentViewForKey:(NSString *)key
+                  mainViewFactory:(WailsContentViewFactory)mainViewFactory
+                dialogViewFactory:(WailsContentViewFactory)dialogViewFactory;
+
+- (void)registerContentViewForKey:(NSString *)key
+                  mainViewFactory:(WailsContentViewFactory)mainViewFactory;
+
+- (void)registerContentViewForKey:(NSString *)key
+                dialogViewFactory:(WailsContentViewFactory)dialogViewFactory;
+
+// SWITCH VIEW / SHOW DIALOGS
+
+- (BOOL)switchToDefaultView;
+- (BOOL)switchToView:(NSString *)key;
 
 @end
