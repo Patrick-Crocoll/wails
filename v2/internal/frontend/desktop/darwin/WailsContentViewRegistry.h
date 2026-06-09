@@ -6,7 +6,7 @@
 
 // A view factory. May return nil, if creation of the view is not supported. May return a new view everytime it is
 // called, or a pre-built view (singleton)
-typedef NSView * _Nullable (^WailsContentViewFactory)(void);
+typedef NSView *_Nullable(^WailsContentViewFactory)(void);
 
 @interface WailsContentViewRegistration : NSObject
 
@@ -28,11 +28,11 @@ typedef NSView * _Nullable (^WailsContentViewFactory)(void);
                   mainViewFactory:(WailsContentViewFactory)mainViewFactory
                 dialogViewFactory:(WailsContentViewFactory)dialogViewFactory;
 
-    - (void)registerContentViewForKey:(NSString *)key
-                      mainViewFactory:(WailsContentViewFactory)mainViewFactory;
+- (void)registerContentViewForKey:(NSString *)key
+                  mainViewFactory:(WailsContentViewFactory)mainViewFactory;
 
-    - (void)registerContentViewForKey:(NSString *)key
-                    dialogViewFactory:(WailsContentViewFactory)dialogViewFactory;
+- (void)registerContentViewForKey:(NSString *)key
+                dialogViewFactory:(WailsContentViewFactory)dialogViewFactory;
 
 - (WailsContentViewRegistration *)registrationForKey:(NSString *)key;
 

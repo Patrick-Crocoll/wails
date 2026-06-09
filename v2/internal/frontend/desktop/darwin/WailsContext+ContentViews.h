@@ -7,7 +7,7 @@
 #import "WailsContentViewRegistry.h"
 
 // Use this key to switch back to the default webView
-extern NSString * const WailsDefaultContentViewKey;
+extern NSString *const WailsDefaultContentViewKey;
 
 @interface WailsContext (ContentViews)
 
@@ -33,6 +33,7 @@ extern NSString * const WailsDefaultContentViewKey;
 // SWITCH VIEW / SHOW DIALOGS
 
 - (BOOL)switchToDefaultView;
+
 - (BOOL)switchToView:(NSString *)key;
 
 - (BOOL)openDialogForView:(NSString *)key
@@ -42,7 +43,7 @@ extern NSString * const WailsDefaultContentViewKey;
                     modal:(BOOL)modal
                  closable:(BOOL)closable
               minimizable:(BOOL)minimizable
-            fullscreenable:(BOOL)fullscreenable;
+           fullscreenable:(BOOL)fullscreenable;
 
 - (void)closeDialog;
 

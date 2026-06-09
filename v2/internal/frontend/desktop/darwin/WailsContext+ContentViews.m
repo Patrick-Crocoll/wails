@@ -9,7 +9,7 @@
 #import "WailsSidebarView.h"
 #import "WailsContentDialogWindow.h"
 
-NSString * const WailsDefaultContentViewKey = @"default:wails:webview";
+NSString *const WailsDefaultContentViewKey = @"default:wails:webview";
 
 static char WailsContentHostViewKey;
 static char WailsContentViewRegistryKey;
@@ -19,6 +19,7 @@ static const CGFloat WailsToolbarHeight = 52.0;
 @interface WailsContext (ContentViewsPrivate)
 
 - (void)setContentHostView:(NSView *)contentHostView;
+
 - (NSView *)contentHostView;
 
 - (WailsContentViewRegistry *)contentViewRegistry;
@@ -32,6 +33,7 @@ static const CGFloat WailsToolbarHeight = 52.0;
 // Helpers for dialogs:
 
 - (WailsContentDialogWindow *)dialogWindow;
+
 - (void)setDialogWindow:(WailsContentDialogWindow *)dialogWindow;
 
 - (void)closeDialog;
@@ -51,9 +53,9 @@ static const CGFloat WailsToolbarHeight = 52.0;
     [self setContentHostView:contentHostView];
     // (2) Register the factory for the default webView, so we can always switch to it later
     [self registerContentViewForKey:WailsDefaultContentViewKey
-                        mainViewFactory:^NSView *{
-                            return webView;
-                        }];
+                    mainViewFactory:^NSView * {
+                        return webView;
+                    }];
     // (3) for now we assume that there will be no toolbar/sidebar
     NSView *mainAppView = contentHostView;
     // (4) but if there actually should be a toolbar, we now add it
@@ -107,7 +109,7 @@ static const CGFloat WailsToolbarHeight = 52.0;
 }
 
 - (BOOL)switchToDefaultView {
-    return [self switchToView: WailsDefaultContentViewKey];
+    return [self switchToView:WailsDefaultContentViewKey];
 }
 
 - (BOOL)switchToView:(NSString *)key {
@@ -149,7 +151,8 @@ static const CGFloat WailsToolbarHeight = 52.0;
 - (NSView *)withToolbar:(NSView *)contentHostView bounds:(NSRect)bounds {
     // (1) create the toolbar
     WailsToolbarView *toolbar = [[WailsToolbarView alloc] initWithFrame:NSMakeRect(0,
-                                                                                   NSHeight(bounds) - WailsToolbarHeight,
+                                                                                   NSHeight(bounds) -
+                                                                                   WailsToolbarHeight,
                                                                                    NSWidth(bounds),
                                                                                    WailsToolbarHeight)];
     self.toolbar = toolbar;
@@ -202,7 +205,7 @@ static const CGFloat WailsToolbarHeight = 52.0;
                     modal:(BOOL)modal
                  closable:(BOOL)closable
               minimizable:(BOOL)minimizable
-            fullscreenable:(BOOL)fullscreenable {
+           fullscreenable:(BOOL)fullscreenable {
     // (1) get the view we want to show in the dialog
     if (key == nil || [key length] == 0) {
         NSLog(@"Cannot open content view dialog without key");
@@ -247,7 +250,7 @@ static const CGFloat WailsToolbarHeight = 52.0;
                               height:height
                             closable:closable
                          minimizable:minimizable
-                       fullscreenable:fullscreenable];
+                      fullscreenable:fullscreenable];
     // (3) add the view to the dialog
     [dialogWindow installContentView:view];
     if (self.mainWindow != nil) {
