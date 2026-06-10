@@ -145,7 +145,6 @@ void ToolbarSetTextInTextField(void* ptr, char* text, int fieldId) {
 */
 import "C"
 import (
-	"log/slog"
 	"unsafe"
 )
 
@@ -194,7 +193,6 @@ func (m *ToolbarModel) startButtonGroup(name string, groupId int) {
 
 func (m *ToolbarModel) endButtonGroup() {
 	C.ToolbarEndButtonGroup(m.ptr)
-	slog.Debug(")=================================>>>>>>>> End du button should be somwhere here!!!!")
 }
 
 func (m *ToolbarModel) selectButtonInGroupExclusive(groupId, buttonId int) {
