@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/wailsapp/wails/v2/pkg/commands/buildtags"
 	"os"
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/wailsapp/wails/v2/pkg/commands/buildtags"
 
 	"github.com/leaanthony/slicer"
 	"github.com/pterm/pterm"
@@ -108,15 +109,17 @@ func buildApplication(f *flags.Build) error {
 	if f.Obfuscated {
 		tableData = append(tableData, []string{"Garble Args", f.GarbleArgs})
 	}
-	tableData = append(tableData, pterm.TableData{
-		{"Skip Frontend", bool2Str(f.SkipFrontend)},
-		{"Compress", bool2Str(f.Upx)},
-		{"Package", bool2Str(!f.NoPackage)},
-		{"Clean Bin Dir", bool2Str(f.Clean)},
-		{"LDFlags", f.LdFlags},
-		{"Tags", "[" + strings.Join(compiledTags, ",") + "]"},
-		{"Race Detector", bool2Str(f.RaceDetector)},
-	}...)
+	tableData = append(
+		tableData, pterm.TableData{
+			{"Skip Frontend", bool2Str(f.SkipFrontend)},
+			{"Compress", bool2Str(f.Upx)},
+			{"Package", bool2Str(!f.NoPackage)},
+			{"Clean Bin Dir", bool2Str(f.Clean)},
+			{"LDFlags", f.LdFlags},
+			{"Tags", "[" + strings.Join(compiledTags, ",") + "]"},
+			{"Race Detector", bool2Str(f.RaceDetector)},
+		}...,
+	)
 	if len(buildOptions.OutputFile) > 0 && f.GetTargets().Length() == 1 {
 		tableData = append(tableData, []string{"Output File", f.OutputFilename})
 	}
@@ -135,20 +138,22 @@ func buildApplication(f *flags.Build) error {
 	}
 
 	// Check platform
-	validPlatformArch := slicer.String([]string{
-		"darwin",
-		"darwin/amd64",
-		"darwin/arm64",
-		"darwin/universal",
-		"linux",
-		"linux/amd64",
-		"linux/arm64",
-		"linux/arm",
-		"windows",
-		"windows/amd64",
-		"windows/arm64",
-		"windows/386",
-	})
+	validPlatformArch := slicer.String(
+		[]string{
+			"darwin",
+			"darwin/amd64",
+			"darwin/arm64",
+			"darwin/universal",
+			"linux",
+			"linux/amd64",
+			"linux/arm64",
+			"linux/arm",
+			"windows",
+			"windows/amd64",
+			"windows/arm64",
+			"windows/386",
+		},
+	)
 
 	outputBinaries := map[string]string{}
 
@@ -156,101 +161,111 @@ func buildApplication(f *flags.Build) error {
 	// returning an error.
 	var targetErr error
 	targets := f.GetTargets()
-	targets.Each(func(platform string) {
-		if targetErr != nil {
-			return
-		}
-
-		if !validPlatformArch.Contains(platform) {
-			buildOptions.Logger.Println("platform '%s' is not supported - skipping. Supported platforms: %s", platform, validPlatformArch.Join(","))
-			return
-		}
-
-		desiredFilename := projectOptions.OutputFilename
-		if desiredFilename == "" {
-			desiredFilename = projectOptions.Name
-		}
-		desiredFilename = strings.TrimSuffix(desiredFilename, ".exe")
-
-		// Calculate platform and arch
-		platformSplit := strings.Split(platform, "/")
-		buildOptions.Platform = platformSplit[0]
-		buildOptions.Arch = f.GetDefaultArch()
-		if len(platformSplit) > 1 {
-			buildOptions.Arch = platformSplit[1]
-		}
-		banner := "Building target: " + buildOptions.Platform + "/" + buildOptions.Arch
-		pterm.DefaultSection.Println(banner)
-
-		if f.Upx && platform == "darwin/universal" {
-			pterm.Warning.Println("Warning: compress flag unsupported for universal binaries. Ignoring.")
-			f.Upx = false
-		}
-
-		switch buildOptions.Platform {
-		case "linux":
-			if runtime.GOOS != "linux" {
-				pterm.Warning.Println("Crosscompiling to Linux not currently supported.")
+	targets.Each(
+		func(platform string) {
+			if targetErr != nil {
 				return
 			}
-		case "darwin":
-			if runtime.GOOS != "darwin" {
-				pterm.Warning.Println("Crosscompiling to Mac not currently supported.")
+
+			if !validPlatformArch.Contains(platform) {
+				buildOptions.Logger.Println(
+					"platform '%s' is not supported - skipping. Supported platforms: %s", platform, validPlatformArch.Join(","),
+				)
 				return
 			}
-			macTargets := targets.Filter(func(platform string) bool {
-				return strings.HasPrefix(platform, "darwin")
-			})
-			if macTargets.Length() == 2 {
-				buildOptions.BundleName = fmt.Sprintf("%s-%s.app", desiredFilename, buildOptions.Arch)
-			}
-		}
 
-		if targets.Length() > 1 {
-			// target filename
+			desiredFilename := projectOptions.OutputFilename
+			if desiredFilename == "" {
+				desiredFilename = projectOptions.Name
+			}
+			desiredFilename = strings.TrimSuffix(desiredFilename, ".exe")
+
+			// Calculate platform and arch
+			platformSplit := strings.Split(platform, "/")
+			buildOptions.Platform = platformSplit[0]
+			buildOptions.Arch = f.GetDefaultArch()
+			if len(platformSplit) > 1 {
+				buildOptions.Arch = platformSplit[1]
+			}
+			banner := "Building target: " + buildOptions.Platform + "/" + buildOptions.Arch
+			pterm.DefaultSection.Println(banner)
+
+			if f.Upx && platform == "darwin/universal" {
+				pterm.Warning.Println("Warning: compress flag unsupported for universal binaries. Ignoring.")
+				f.Upx = false
+			}
+
 			switch buildOptions.Platform {
-			case "windows":
-				desiredFilename = fmt.Sprintf("%s-%s", desiredFilename, buildOptions.Arch)
-			case "linux", "darwin":
-				desiredFilename = fmt.Sprintf("%s-%s-%s", desiredFilename, buildOptions.Platform, buildOptions.Arch)
-			}
-		}
-		if buildOptions.Platform == "windows" {
-			desiredFilename += ".exe"
-		}
-		buildOptions.OutputFile = desiredFilename
-
-		if f.OutputFilename != "" {
-			buildOptions.OutputFile = f.OutputFilename
-		}
-
-		if f.Obfuscated && f.SkipBindings {
-			pterm.Warning.Println("obfuscated flag overrides skipbindings flag.")
-			buildOptions.SkipBindings = false
-		}
-
-		if !f.DryRun {
-			// Start Time
-			start := time.Now()
-
-			compiledBinary, err := build.Build(buildOptions)
-			if err != nil {
-				pterm.Error.Println(err.Error())
-				targetErr = err
-				return
+			case "linux":
+				if runtime.GOOS != "linux" {
+					pterm.Warning.Println("Crosscompiling to Linux not currently supported.")
+					return
+				}
+			case "darwin":
+				if runtime.GOOS != "darwin" {
+					pterm.Warning.Println("Crosscompiling to Mac not currently supported.")
+					return
+				}
+				macTargets := targets.Filter(
+					func(platform string) bool {
+						return strings.HasPrefix(platform, "darwin")
+					},
+				)
+				if macTargets.Length() == 2 {
+					buildOptions.BundleName = fmt.Sprintf("%s-%s.app", desiredFilename, buildOptions.Arch)
+				}
 			}
 
-			buildOptions.IgnoreFrontend = true
-			buildOptions.CleanBinDirectory = false
+			if targets.Length() > 1 {
+				// target filename
+				switch buildOptions.Platform {
+				case "windows":
+					desiredFilename = fmt.Sprintf("%s-%s", desiredFilename, buildOptions.Arch)
+				case "linux", "darwin":
+					desiredFilename = fmt.Sprintf("%s-%s-%s", desiredFilename, buildOptions.Platform, buildOptions.Arch)
+				}
+			}
+			if buildOptions.Platform == "windows" {
+				desiredFilename += ".exe"
+			}
+			buildOptions.OutputFile = desiredFilename
 
-			// Output stats
-			buildOptions.Logger.Println(fmt.Sprintf("Built '%s' in %s.\n", compiledBinary, time.Since(start).Round(time.Millisecond).String()))
+			if f.OutputFilename != "" {
+				buildOptions.OutputFile = f.OutputFilename
+			}
 
-			outputBinaries[buildOptions.Platform+"/"+buildOptions.Arch] = compiledBinary
-		} else {
-			pterm.Info.Println("Dry run: skipped build.")
-		}
-	})
+			if f.Obfuscated && f.SkipBindings {
+				pterm.Warning.Println("obfuscated flag overrides skipbindings flag.")
+				buildOptions.SkipBindings = false
+			}
+
+			if !f.DryRun {
+				// Start Time
+				start := time.Now()
+
+				compiledBinary, err := build.Build(buildOptions)
+				if err != nil {
+					pterm.Error.Println(err.Error())
+					targetErr = err
+					return
+				}
+
+				buildOptions.IgnoreFrontend = true
+				buildOptions.CleanBinDirectory = false
+
+				// Output stats
+				buildOptions.Logger.Println(
+					fmt.Sprintf(
+						"Built '%s' in %s.\n", compiledBinary, time.Since(start).Round(time.Millisecond).String(),
+					),
+				)
+
+				outputBinaries[buildOptions.Platform+"/"+buildOptions.Arch] = compiledBinary
+			} else {
+				pterm.Info.Println("Dry run: skipped build.")
+			}
+		},
+	)
 
 	if targetErr != nil {
 		return targetErr
