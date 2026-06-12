@@ -17,9 +17,9 @@ var __spreadValues = (a, b) => {
   return a;
 };
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
-var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+var __export = (target, all2) => {
+  for (var name in all2)
+    __defProp(target, name, { get: all2[name], enumerable: true });
 };
 
 // desktop/@wailsio/runtime/src/index.ts
