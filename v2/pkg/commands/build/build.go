@@ -3,7 +3,6 @@ package build
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -231,14 +230,16 @@ func GenerateBindings(buildOptions *Options) error {
 	}
 
 	// Generate Bindings
-	output, err := bindings.GenerateBindings(bindings.Options{
-		Compiler:     buildOptions.Compiler,
-		Tags:         buildOptions.UserTags,
-		GoModTidy:    !buildOptions.SkipModTidy,
-		TsPrefix:     buildOptions.ProjectData.Bindings.TsGeneration.Prefix,
-		TsSuffix:     buildOptions.ProjectData.Bindings.TsGeneration.Suffix,
-		TsOutputType: buildOptions.ProjectData.Bindings.TsGeneration.OutputType,
-	})
+	output, err := bindings.GenerateBindings(
+		bindings.Options{
+			Compiler:     buildOptions.Compiler,
+			Tags:         buildOptions.UserTags,
+			GoModTidy:    !buildOptions.SkipModTidy,
+			TsPrefix:     buildOptions.ProjectData.Bindings.TsGeneration.Prefix,
+			TsSuffix:     buildOptions.ProjectData.Bindings.TsGeneration.Suffix,
+			TsOutputType: buildOptions.ProjectData.Bindings.TsGeneration.OutputType,
+		},
+	)
 	if err != nil {
 		return err
 	}
@@ -265,7 +266,11 @@ func execBuildApplication(builder Builder, options *Options) (string, error) {
 
 		// When we finish, we will want to remove the syso file
 		defer func() {
-			err := os.Remove(filepath.Join(options.ProjectData.Path, strings.ReplaceAll(options.ProjectData.Name, " ", "_")+"-res.syso"))
+			err := os.Remove(
+				filepath.Join(
+					options.ProjectData.Path, strings.ReplaceAll(options.ProjectData.Name, " ", "_")+"-res.syso",
+				),
+			)
 			if err != nil {
 				fatal(err.Error())
 			}
@@ -305,9 +310,15 @@ func execBuildApplication(builder Builder, options *Options) (string, error) {
 		}
 		// Run lipo
 		if options.Verbosity == VERBOSE {
-			pterm.Println(fmt.Sprintf("Running lipo: lipo -create -output %s %s %s", outputFile, amd64Filename, arm64Filename))
+			pterm.Println(
+				fmt.Sprintf(
+					"Running lipo: lipo -create -output %s %s %s", outputFile, amd64Filename, arm64Filename,
+				),
+			)
 		}
-		_, stderr, err := shell.RunCommand(options.BinDirectory, "lipo", "-create", "-output", outputFile, amd64Filename, arm64Filename)
+		_, stderr, err := shell.RunCommand(
+			options.BinDirectory, "lipo", "-create", "-output", outputFile, amd64Filename, arm64Filename,
+		)
 		if err != nil {
 			return "", fmt.Errorf("%s - %s", err.Error(), stderr)
 		}
@@ -358,15 +369,18 @@ func execBuildApplication(builder Builder, options *Options) (string, error) {
 		pterm.Println("Done.")
 	}
 
-	if runtime.GOOS == "darwin" && options.Platform == "darwin" {
-		// On macOS, self-sign the .app bundle so notifications work
-		printBulletPoint("Self-signing application: ")
-		cmd := exec.Command("/usr/bin/codesign", "--force", "--deep", "--sign", "-", options.CompiledBinary)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return "", fmt.Errorf("codesign failed: %v – %s", err, out)
+	// FIXME: What is the purpose of this? I breaks universal apps!!!
+	/*
+		if runtime.GOOS == "darwin" && options.Platform == "darwin" {
+			// On macOS, self-sign the .app bundle so notifications work
+			printBulletPoint("Self-signing application: ")
+			cmd := exec.Command("/usr/bin/codesign", "--force", "--deep", "--sign", "-", options.CompiledBinary)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return "", fmt.Errorf("codesign failed: %v – %s", err, out)
+			}
+			pterm.Println("Done.")
 		}
-		pterm.Println("Done.")
-	}
+	*/
 
 	if options.Platform == "windows" {
 		const nativeWebView2Loader = "native_webview2loader"
@@ -377,7 +391,10 @@ func execBuildApplication(builder Builder, options *Options) (string, error) {
 			pterm.Warning.Println(message)
 		} else {
 			tags = append(tags, nativeWebView2Loader)
-			message := fmt.Sprintf("Wails is now using the new Go WebView2Loader. If you encounter any issues with it, please report them to https://github.com/wailsapp/wails/issues/2004. You could also use the old legacy loader with `-tags %s`, but keep in mind this will be deprecated in the near future.", strings.Join(tags, ","))
+			message := fmt.Sprintf(
+				"Wails is now using the new Go WebView2Loader. If you encounter any issues with it, please report them to https://github.com/wailsapp/wails/issues/2004. You could also use the old legacy loader with `-tags %s`, but keep in mind this will be deprecated in the near future.",
+				strings.Join(tags, ","),
+			)
 			pterm.Info.Println(message)
 		}
 	}
@@ -389,7 +406,9 @@ func execBuildApplication(builder Builder, options *Options) (string, error) {
 	return options.CompiledBinary, nil
 }
 
-func execPreBuildHook(outputLogger *clilogger.CLILogger, options *Options, hookIdentifier string, argReplacements map[string]string) error {
+func execPreBuildHook(
+	outputLogger *clilogger.CLILogger, options *Options, hookIdentifier string, argReplacements map[string]string,
+) error {
 	preBuildHook := options.ProjectData.PreBuildHooks[hookIdentifier]
 	if preBuildHook == "" {
 		return nil
@@ -398,7 +417,9 @@ func execPreBuildHook(outputLogger *clilogger.CLILogger, options *Options, hookI
 	return executeBuildHook(outputLogger, options, hookIdentifier, argReplacements, preBuildHook, "pre")
 }
 
-func execPostBuildHook(outputLogger *clilogger.CLILogger, options *Options, hookIdentifier string, argReplacements map[string]string) error {
+func execPostBuildHook(
+	outputLogger *clilogger.CLILogger, options *Options, hookIdentifier string, argReplacements map[string]string,
+) error {
 	postBuildHook := options.ProjectData.PostBuildHooks[hookIdentifier]
 	if postBuildHook == "" {
 		return nil
@@ -407,7 +428,10 @@ func execPostBuildHook(outputLogger *clilogger.CLILogger, options *Options, hook
 	return executeBuildHook(outputLogger, options, hookIdentifier, argReplacements, postBuildHook, "post")
 }
 
-func executeBuildHook(_ *clilogger.CLILogger, options *Options, hookIdentifier string, argReplacements map[string]string, buildHook string, hookName string) error {
+func executeBuildHook(
+	_ *clilogger.CLILogger, options *Options, hookIdentifier string, argReplacements map[string]string, buildHook string,
+	hookName string,
+) error {
 	if !options.ProjectData.RunNonNativeBuildHooks {
 		if hookIdentifier == "" {
 			// That's the global hook
