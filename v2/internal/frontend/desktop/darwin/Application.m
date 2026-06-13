@@ -13,14 +13,14 @@
 #import "WindowDelegate.h"
 #import "WailsMenu.h"
 #import "WailsMenuItem.h"
-#import "WailsNativeBridge.h" // #Native: views
+#import "WailsNativeExtension.h" // #Native: views
 
 WailsContext* Create(const char* title, int width, int height, int frameless, int resizable, int zoomable, int fullscreen, int fullSizeContent, int hideTitleBar, int titlebarAppearsTransparent, int hideTitle, int useToolbar, int hideToolbarSeparator, int webviewIsTransparent, int alwaysOnTop, int hideWindowOnClose, const char *appearance, int windowIsTranslucent, int contentProtection, int devtoolsEnabled, int defaultContextMenuEnabled, int windowStartState, int startsHidden, int minWidth, int minHeight, int maxWidth, int maxHeight, bool fraudulentWebsiteWarningEnabled, struct Preferences preferences, int singleInstanceLockEnabled, const char* singleInstanceUniqueId, bool enableDragAndDrop, bool disableWebViewDragAndDrop, bool withNativeSidebar, bool withNativeToolbar) {
 
     [NSApplication sharedApplication];
 
     WailsContext *result = [WailsContext new];
-    [[WailsNativeBridge sharedBridge] setWailsContext:result]; // #Native: views
+    RegisterApplicationNativeViews(result); // #Native: views
 
     result.devtoolsEnabled = devtoolsEnabled;
     result.defaultContextMenuEnabled = defaultContextMenuEnabled;
